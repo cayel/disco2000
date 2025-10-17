@@ -9,8 +9,5 @@
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "env": {
-    "FRONTEND_URL": "https://example.vercel.app"
-  }
+  ]
 }
