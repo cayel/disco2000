@@ -1,0 +1,16 @@
+pyproject.toml
+app/__init__.py
+app/main.py
+app/core/config.py
+app/core/security.py
+app/models/base.py
+app/models/record.py
+app/routers/__init__.py
+app/routers/records.py
+app/schemas/record.py
+app/services/discogs.py
+disco2000_backend.egg-info/PKG-INFO
+disco2000_backend.egg-info/SOURCES.txt
+disco2000_backend.egg-info/dependency_links.txt
+disco2000_backend.egg-info/requires.txt
+disco2000_backend.egg-info/top_level.txt
