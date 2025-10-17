@@ -1,0 +1,41 @@
+# --- General ---
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# --- Node / Frontend ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+# Next/React typical extras (defensive)
+.next/
+*.tgz
+
+# --- Python / Backend ---
+backend/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+.dev.db
+.cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Vercel / Build artifacts ---
+.vercel/
+
+# --- Storybook (future) ---
+storybook-static/
+
+# --- Misc tooling ---
+.idea/
+.vscode/
+
+# --- Local test data ---
+/tmp/
