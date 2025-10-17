@@ -155,8 +155,6 @@ Le frontend est construit statiquement (Vite) et servi par Vercel. L'API FastAPI
 - Connexions persistantes DB doivent utiliser pooling adapté (à implémenter plus tard).
 - WebSockets non optimaux sur fonctions classiques (prévoir alternative plus tard: Edge functions ou autre plateforme).
 
-Pour un backend étatful ou longues connexions, envisager un déploiement conteneur (Option B) dans le futur.
-
 ## Guidelines IA / Contribution
 Le prompt complet et les règles de contribution se trouvent dans `docs/GUIDELINES.md`.
 Avant une PR : tests OK, lint OK, description claire, pas de TODO orphelin.
