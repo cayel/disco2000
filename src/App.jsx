@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, Image, Badge, Stack, IconButton, useColorMode, Select, Button } from '@chakra-ui/react'
+import { Heading, Box, Spinner, SimpleGrid, Text, Image, Badge, Stack, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb } from '@chakra-ui/react'
 import { ViewIcon, HamburgerIcon, SmallCloseIcon, MinusIcon, AddIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
@@ -24,7 +24,7 @@ function App() {
     { value: 'lg', icon: <AddIcon boxSize={7} />, label: 'Grande' },
   ];
   const [artistFilter, setArtistFilter] = useState('');
-  const [yearFilter, setYearFilter] = useState('');
+  const [yearRange, setYearRange] = useState([null, null]);
   const { colorMode, toggleColorMode } = useColorMode();
   const [albums, setAlbums] = useState([])
   const [loading, setLoading] = useState(true)
@@ -136,24 +136,45 @@ function App() {
                     <option key={artist} value={artist}>{artist}</option>
                   ))}
                 </Select>
-                <Select
-                  placeholder="Filtrer par année"
-                  value={yearFilter}
-                  onChange={e => setYearFilter(e.target.value)}
-                  bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                  color={colorMode === 'dark' ? 'white' : 'brand.900'}
-                  borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
-                  _hover={{ borderColor: 'accent.500' }}
-                  maxW={"160px"}
-                >
-                  {[...new Set(albums.map(a => a.year))].sort().map(year => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </Select>
+                {/* Double slider (RangeSlider) pour plage d'années */}
+                <Box maxW="320px" w="100%" px={2}>
+                  {(() => {
+                    const years = [...new Set(albums.map(a => a.year))].filter(Boolean).map(Number).sort((a, b) => a - b);
+                    if (years.length === 0) return null;
+                    const minYear = years[0];
+                    const maxYear = years[years.length - 1];
+                    const [minSelected, maxSelected] = yearRange[0] !== null ? yearRange : [minYear, maxYear];
+                    return (
+                      <Box>
+                        <Text fontSize="sm" mb={1} color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                          Plage d'années : {minSelected} - {maxSelected}
+                        </Text>
+                        <RangeSlider
+                          min={minYear}
+                          max={maxYear}
+                          step={1}
+                          value={[minSelected, maxSelected]}
+                          onChange={val => setYearRange(val)}
+                          colorScheme="purple"
+                        >
+                          <RangeSliderTrack>
+                            <RangeSliderFilledTrack />
+                          </RangeSliderTrack>
+                          <RangeSliderThumb index={0} />
+                          <RangeSliderThumb index={1} />
+                        </RangeSlider>
+                        <Button mt={1} size="xs" variant="ghost" colorScheme="gray" onClick={() => setYearRange([minYear, maxYear])}>Toutes les années</Button>
+                      </Box>
+                    );
+                  })()}
+                </Box>
               </Box>
               <SimpleGrid columns={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing={6} mt={2}>
                 {albums
-                  .filter(album => (!artistFilter || album.artist === artistFilter) && (!yearFilter || String(album.year) === yearFilter))
+                  .filter(album =>
+                    (!artistFilter || album.artist === artistFilter) &&
+                    (yearRange[0] === null || yearRange[1] === null || (album.year >= yearRange[0] && album.year <= yearRange[1]))
+                  )
                   .map((album, index) => (
                     <Box
                       key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
