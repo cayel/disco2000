@@ -84,9 +84,17 @@ function App() {
         </Heading>
         <Box display="flex" alignItems="center" gap={2}>
           {user && (
-            <Button variant="ghost" colorScheme="purple" onClick={() => setShowProfile(true)}>
-              Mon profil
-            </Button>
+            <IconButton
+              variant="ghost"
+              size="sm"
+              colorScheme="gray"
+              aria-label="Mon profil"
+              icon={
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a8.38 8.38 0 0 1 13 0"/></svg>
+              }
+              onClick={() => setShowProfile(true)}
+              title={user.displayName || user.email || 'Mon profil'}
+            />
           )}
           <GoogleAuthButton />
           <IconButton
