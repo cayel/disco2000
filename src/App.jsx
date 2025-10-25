@@ -175,6 +175,18 @@ function App() {
               />
             </Tooltip>
           )}
+
+          {/* Modale d'ajout d'album studio */}
+          <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
+            <ModalOverlay />
+            <ModalContent>
+              <ModalCloseButton />
+              <ModalBody p={0}>
+                <AddStudioAlbum onClose={onClose} refreshAlbums={fetchAlbums} />
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+
           {loading && <Spinner size="xl" mt={8} />}
           {error && <Text color="red.500">Erreur : {error}</Text>}
           {!loading && !error && (
