@@ -3,6 +3,7 @@ import { Button, Icon } from '@chakra-ui/react';
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useState, useEffect } from 'react';
+import { setCookie } from '../utils/cookie';
 
 
 export default function GoogleAuthButton() {
@@ -14,52 +15,28 @@ export default function GoogleAuthButton() {
 
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
+    const apiKey = import.meta.env.VITE_API_KEY;
+    const apiBase = import.meta.env.VITE_API_URL;
     try {
       const result = await signInWithPopup(auth, provider);
       setUser(result.user);
 
-      // Vérification et création utilisateur côté API
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const apiBase = import.meta.env.VITE_API_URL;
-      const email = result.user.email;
-      // Vérifier si l'utilisateur existe
-      const existsRes = await fetch(`${apiBase}/api/users/exists?email=${encodeURIComponent(email)}`, {
-        headers: { 'X-API-KEY': apiKey }
+      // Envoi du id_token Google au backend pour JWT
+      const idToken = await result.user.getIdToken();
+      console.log('[DEBUG] id_token Google envoyé au backend :', idToken);
+      const jwtRes = await fetch(`${apiBase}/api/users/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': apiKey
+        },
+        body: JSON.stringify({ id_token: idToken })
       });
-      const existsData = await existsRes.json();
-      // Test robuste sur la valeur de exists
-      const exists = existsData.exists === true || existsData.exists === 1 || existsData.exists === 'true';
-      if (!exists) {
-        // Construction du payload selon le schéma API
-        const displayName = result.user.displayName || '';
-        let first_name = '', last_name = '';
-        if (displayName.includes(' ')) {
-          [first_name, ...last_name] = displayName.split(' ');
-          last_name = last_name.join(' ');
-        } else {
-          first_name = displayName;
-          last_name = '';
-        }
-        const payload = {
-          first_name,
-          last_name,
-          email: result.user.email,
-          identifier: result.user.uid,
-          roles: ['utilisateur']
-        };
-        await fetch(`${apiBase}/api/users`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-KEY': apiKey
-          },
-          body: JSON.stringify(payload)
-        });
-      } else {
-        // Pour debug : log la valeur reçue
-        if (typeof existsData.exists !== 'boolean') {
-          console.log('Réponse API /exists inattendue:', existsData);
-        }
+      const jwtData = await jwtRes.json();
+      console.log('[DEBUG] Réponse backend /api/users/token :', jwtData);
+      if (jwtData.access_token) {
+        setCookie('jwt', jwtData.access_token, 7, true);
+        window.dispatchEvent(new CustomEvent('jwt-updated', { detail: jwtData.access_token }));
       }
     } catch (err) {
       alert('Erreur de connexion : ' + err.message);
