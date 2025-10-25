@@ -1,9 +1,13 @@
+import { decodeJwt } from './utils/jwt';
+import { getCookie } from './utils/cookie';
 import { useState, useEffect } from 'react'
 import { Heading, Box, Spinner, SimpleGrid, Text, Image, Badge, Stack, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb } from '@chakra-ui/react'
 import { ViewIcon, HamburgerIcon, SmallCloseIcon, MinusIcon, AddIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
+import AddStudioAlbum from './components/AddStudioAlbum'
+import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure, Tooltip } from '@chakra-ui/react';
 import { auth } from './firebase'
 // Les hooks doivent être dans le composant App
 import reactLogo from './assets/react.svg'
@@ -11,8 +15,12 @@ import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const [user, setUser] = useState(() => auth.currentUser);
   const [showProfile, setShowProfile] = useState(false);
+    // Décodage du JWT pour les rôles
+    const jwt = getCookie('jwt');
+    const jwtPayload = decodeJwt(jwt);
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
     return () => unsubscribe();
@@ -30,9 +38,11 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
+  // Fonction pour rafraîchir la liste des albums
+  const fetchAlbums = () => {
     const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
+    setLoading(true);
     fetch(`${apiBase}/api/albums`, {
       headers: {
         'X-API-KEY': apiKey
@@ -50,7 +60,10 @@ function App() {
         setError(err.message)
         setLoading(false)
       })
-  }, [])
+  };
+  useEffect(() => {
+    fetchAlbums();
+  }, []);
 
   return (
     <>
@@ -120,7 +133,36 @@ function App() {
           pb={12}
           bg={colorMode === 'dark' ? 'brand.900' : '#f7f7fa'}
           transition="background 0.3s"
+          position="relative"
         >
+          {/* Bouton flottant pour ouvrir la modale d'ajout */}
+            {/* Bouton flottant visible uniquement pour un contributeur connecté */}
+            {user && jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('contributeur') && (
+              <Tooltip label="Ajouter un album studio" placement="left">
+                <IconButton
+                  icon={<AddIcon />}
+                  colorScheme="purple"
+                  borderRadius="full"
+                  size="lg"
+                  position="fixed"
+                  bottom={{ base: 6, md: 10 }}
+                  right={{ base: 6, md: 10 }}
+                  zIndex={20}
+                  boxShadow="2xl"
+                  onClick={onOpen}
+                  aria-label="Ajouter un album studio"
+                />
+              </Tooltip>
+            )}
+          <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">
+            <ModalOverlay />
+            <ModalContent borderRadius="2xl" p={0}>
+              <ModalCloseButton />
+              <ModalBody p={0}>
+                <AddStudioAlbum onAlbumAdded={() => { fetchAlbums(); onClose(); }} />
+              </ModalBody>
+            </ModalContent>
+          </Modal>
           {loading && <Spinner size="xl" mt={8} />}
           {error && <Text color="red.500">Erreur : {error}</Text>}
           {!loading && !error && (
