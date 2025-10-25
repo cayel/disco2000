@@ -32,7 +32,12 @@ function App() {
 
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL;
-    fetch(apiUrl)
+    const apiKey = import.meta.env.VITE_API_KEY;
+    fetch(apiUrl, {
+      headers: {
+        'X-API-KEY': apiKey
+      }
+    })
       .then((res) => {
         if (!res.ok) throw new Error('Erreur API')
         return res.json()
