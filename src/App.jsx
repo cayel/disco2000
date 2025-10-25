@@ -7,6 +7,7 @@ import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
 import AddStudioAlbum from './components/AddStudioAlbum'
+import StudioStats from './components/StudioStats'
 import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure, Tooltip } from '@chakra-ui/react';
 import { auth } from './firebase'
 // Les hooks doivent être dans le composant App
@@ -18,6 +19,7 @@ function App() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [user, setUser] = useState(() => auth.currentUser);
   const [showProfile, setShowProfile] = useState(false);
+  const [showStats, setShowStats] = useState(false);
     // Décodage du JWT pour les rôles
     const jwt = getCookie('jwt');
     const jwtPayload = decodeJwt(jwt);
@@ -101,6 +103,26 @@ function App() {
           Disco 2000
         </Heading>
         <Box display="flex" alignItems="center" gap={2}>
+          <Button
+            variant={!showStats && !showProfile ? 'solid' : 'ghost'}
+            size="sm"
+            colorScheme="purple"
+            onClick={() => { setShowStats(false); setShowProfile(false); }}
+            fontWeight="bold"
+            px={3}
+          >
+            Disques
+          </Button>
+          <Button
+            variant={showStats && !showProfile ? 'solid' : 'ghost'}
+            size="sm"
+            colorScheme="purple"
+            onClick={() => { setShowStats(true); setShowProfile(false); }}
+            fontWeight="bold"
+            px={3}
+          >
+            Statistiques
+          </Button>
           {user && (
             <IconButton
               variant="ghost"
@@ -126,6 +148,8 @@ function App() {
       </Box>
       {showProfile && user ? (
         <ProfilePage onLogout={() => setShowProfile(false)} onBack={() => setShowProfile(false)} />
+      ) : showStats ? (
+        <StudioStats />
       ) : (
         <Box
           px={4}

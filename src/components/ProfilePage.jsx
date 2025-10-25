@@ -58,15 +58,6 @@ export default function ProfilePage({ onLogout, onBack }) {
         </>
       )}
       <Stack direction="row" spacing={4} justify="center" mb={2}>
-        <Button
-          bg={colorMode === 'dark' ? 'accent.500' : 'purple.500'}
-          color={colorMode === 'dark' ? 'brand.900' : 'white'}
-          _hover={{ bg: colorMode === 'dark' ? 'accent.600' : 'purple.600' }}
-          variant="solid"
-          onClick={onBack}
-        >
-          Retour aux albums
-        </Button>
         <Button colorScheme="red" onClick={() => { signOut(auth); onLogout && onLogout(); }}>Se déconnecter</Button>
       </Stack>
     </Box>
