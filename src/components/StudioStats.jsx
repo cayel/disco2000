@@ -8,6 +8,7 @@ export default function StudioStats({ onBack }) {
   const [topYear, setTopYear] = useState(null);
   const [topArtist, setTopArtist] = useState(null);
   const [albums, setAlbums] = useState([]);
+  const [uniqueArtists, setUniqueArtists] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { colorMode } = useColorMode();
@@ -38,6 +39,8 @@ export default function StudioStats({ onBack }) {
         let maxArtist = null;
         let maxArtistCount = 0;
         let artistCount = {};
+        // Calcul du nombre d'artistes différents
+        const artistSet = new Set();
         if (Array.isArray(data) && data.length > 0) {
           data.forEach(album => {
             // Année
@@ -45,7 +48,10 @@ export default function StudioStats({ onBack }) {
             if (year) yearCount[year] = (yearCount[year] || 0) + 1;
             // Artiste
             const artist = album.artist || album.artiste;
-            if (artist) artistCount[artist] = (artistCount[artist] || 0) + 1;
+            if (artist) {
+              artistCount[artist] = (artistCount[artist] || 0) + 1;
+              artistSet.add(artist);
+            }
           });
           Object.entries(yearCount).forEach(([year, count]) => {
             if (count > maxYearCount) {
@@ -61,9 +67,11 @@ export default function StudioStats({ onBack }) {
           });
           setTopYear(maxYear);
           setTopArtist(maxArtist);
+          setUniqueArtists(artistSet.size);
         } else {
           setTopYear(null);
           setTopArtist(null);
+          setUniqueArtists(0);
         }
         setLoading(false);
       })
@@ -88,6 +96,10 @@ export default function StudioStats({ onBack }) {
             <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
               <StatLabel fontSize="lg">Nombre total d'albums</StatLabel>
               <StatNumber fontSize="4xl" color="purple.400">{count}</StatNumber>
+            </Stat>
+            <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
+              <StatLabel fontSize="lg">Nombre d'artistes différents</StatLabel>
+              <StatNumber fontSize="3xl" color="purple.500">{uniqueArtists}</StatNumber>
             </Stat>
             <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
               <StatLabel fontSize="lg">Année la plus représentée</StatLabel>
