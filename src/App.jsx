@@ -31,9 +31,9 @@ function App() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL;
+    const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
-    fetch(apiUrl, {
+    fetch(`${apiBase}/api/albums`, {
       headers: {
         'X-API-KEY': apiKey
       }
