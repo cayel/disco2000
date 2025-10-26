@@ -45,6 +45,8 @@ function App() {
   const [albums, setAlbums] = useState([])
   const [albumsPerRow, setAlbumsPerRow] = useState(5)
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
+  // Détermination du rôle contributeur
+  const isContributor = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('contributeur');
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -328,15 +330,16 @@ function App() {
                     ))}
                 </SimpleGrid>
   {/* Fenêtre modale de détails d'album */}
-  <AlbumDetailsModal
-    albumId={selectedAlbumId}
-    isOpen={isDetailsOpen}
-    onClose={() => {
-      setSelectedAlbumId(null);
-      closeDetails();
-    }}
-    debugAlbums={albums}
-  />
+      <AlbumDetailsModal
+        albumId={selectedAlbumId}
+        isOpen={isDetailsOpen}
+        onClose={() => {
+          setSelectedAlbumId(null);
+          closeDetails();
+        }}
+        isContributor={isContributor}
+        refreshAlbums={fetchAlbums}
+      />
               </Box>
             </Box>
           )}

@@ -1,57 +1,67 @@
 import { useEffect, useState } from 'react';
-import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, Box, Text, Image, Spinner, Badge, Stack, Tag, TagLabel, Wrap, WrapItem } from '@chakra-ui/react';
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, Box, Text, Image, Spinner, Badge, Stack, Tag, TagLabel, Wrap, WrapItem, Button, useToast } from '@chakra-ui/react';
 
-export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbums }) {
+import { getCookie } from '../utils/cookie';
+
+export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbums, isContributor, refreshAlbums }) {
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [rawResponse, setRawResponse] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const toast = useToast();
+  const jwt = getCookie('jwt');
 
   useEffect(() => {
-    if (!albumId || !isOpen) return;
+    if (!isOpen || !albumId) return;
     setLoading(true);
     setError(null);
-    setRawResponse(`DEBUG: albumId=${albumId}, timestamp=${Date.now()}`);
+    setAlbum(null);
     fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
       headers: {
         'X-API-KEY': import.meta.env.VITE_API_KEY
       }
     })
-      .then(async res => {
-        let text = await res.text();
-        setRawResponse(text);
-        let data = null;
-        try {
-          data = JSON.parse(text);
-        } catch (e) {
-          // not JSON
-        }
-        if (!res.ok) {
-          setError(`Erreur API: ${res.status} ${res.statusText}`);
-          setAlbum(null);
-        } else if (!data) {
-          setError(`Réponse vide ou non JSON`);
-          setAlbum(null);
-        } else {
-          setAlbum(data);
-        }
-        setLoading(false);
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Erreur lors du chargement');
+        const data = await res.json();
+        setAlbum(data);
       })
-      .catch(err => {
-        setError('Erreur lors du chargement des détails.');
-        setRawResponse("");
-        setLoading(false);
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [isOpen, albumId]);
+
+  const handleDelete = async () => {
+    if (!albumId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
+        method: 'DELETE',
+        headers: {
+          'X-API-KEY': import.meta.env.VITE_API_KEY,
+          ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+        }
       });
-  }, [albumId, isOpen]);
+      if (res.ok) {
+        toast({ title: 'Album supprimé', status: 'success', duration: 2000 });
+        onClose();
+        if (refreshAlbums) refreshAlbums();
+      } else {
+        toast({ title: 'Erreur lors de la suppression', status: 'error', duration: 3000 });
+      }
+    } catch (e) {
+      toast({ title: 'Erreur réseau', status: 'error', duration: 3000 });
+    }
+    setDeleting(false);
+  };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg" isCentered>
+    <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Détails de l'album</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
-          {/* Debug info supprimée car l'id est maintenant présent */}
           {loading && <Spinner />}
           {error && <Text color="red.500">{error}</Text>}
           {album && (
@@ -72,8 +82,6 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
                   </Text>
                 )}
                 <Badge colorScheme="purple" mb={2}>{album.year}</Badge>
-
-
                 {/* Genres sous forme de tags */}
                 {album.genre && (
                   <Wrap mb={2}>
@@ -100,6 +108,11 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
                 )}
                 {album.country && <Text mb={1}>{album.country}</Text>}
                 {album.description && <Text mt={2} fontSize="sm">{album.description}</Text>}
+                {isContributor && (
+                  <Button colorScheme="red" size="sm" mt={4} isLoading={deleting} onClick={handleDelete}>
+                    Supprimer l'album
+                  </Button>
+                )}
               </Box>
             </Stack>
           )}
