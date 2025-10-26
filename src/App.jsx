@@ -7,6 +7,7 @@ import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
 import AddStudioAlbum from './components/AddStudioAlbum'
+import AlbumDetailsModal from './components/AlbumDetailsModal'
 import StudioStats from './components/StudioStats'
 import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure, Tooltip } from '@chakra-ui/react';
 import { auth } from './firebase'
@@ -16,7 +17,12 @@ import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure(); // pour la modale d'ajout
+  const {
+    isOpen: isDetailsOpen,
+    onOpen: openDetails,
+    onClose: closeDetails
+  } = useDisclosure();
   const [user, setUser] = useState(() => auth.currentUser);
   const [showProfile, setShowProfile] = useState(false);
   const [showStats, setShowStats] = useState(false);
@@ -38,6 +44,7 @@ function App() {
   const { colorMode, toggleColorMode } = useColorMode();
   const [albums, setAlbums] = useState([])
   const [albumsPerRow, setAlbumsPerRow] = useState(5)
+  const [selectedAlbumId, setSelectedAlbumId] = useState(null);
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -274,6 +281,10 @@ function App() {
                         aspectRatio={1}
                         cursor="pointer"
                         transition="background 0.3s"
+                        onClick={() => {
+                          setSelectedAlbumId(album.id);
+                          openDetails();
+                        }}
                       >
                         {album.cover_url && (
                           <Image
@@ -316,6 +327,16 @@ function App() {
                       </Box>
                     ))}
                 </SimpleGrid>
+  {/* Fenêtre modale de détails d'album */}
+  <AlbumDetailsModal
+    albumId={selectedAlbumId}
+    isOpen={isDetailsOpen}
+    onClose={() => {
+      setSelectedAlbumId(null);
+      closeDetails();
+    }}
+    debugAlbums={albums}
+  />
               </Box>
             </Box>
           )}
