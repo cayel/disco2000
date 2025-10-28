@@ -1,7 +1,53 @@
 import { decodeJwt } from './utils/jwt';
 import { getCookie } from './utils/cookie';
 import { useState, useEffect } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, Image, Badge, Stack, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel } from '@chakra-ui/react'
+import { Heading, Box, Spinner, SimpleGrid, Text, Image, Badge, Stack, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip } from '@chakra-ui/react'
+// Icônes inline pour CD et vinyle
+// Icônes réalistes et colorées
+const CdIcon = (props) => (
+  <svg viewBox="0 0 32 32" width="22" height="22" {...props}>
+    <defs>
+      <radialGradient id="cd-rainbow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#fff" />
+        <stop offset="60%" stopColor="#b3e0ff" />
+        <stop offset="80%" stopColor="#f0c" />
+        <stop offset="100%" stopColor="#aaf" />
+      </radialGradient>
+    </defs>
+    <circle cx="16" cy="16" r="14" fill="url(#cd-rainbow)" stroke="#bbb" strokeWidth="2" />
+    <circle cx="16" cy="16" r="4" fill="#222" stroke="#fff" strokeWidth="1.5" />
+  </svg>
+);
+const VinylIcon = (props) => (
+  <svg viewBox="0 0 32 32" width="22" height="22" {...props}>
+    <circle cx="16" cy="16" r="14" fill="#222" stroke="#111" strokeWidth="2" />
+    <circle cx="16" cy="16" r="4.5" fill="#e53e3e" stroke="#fff" strokeWidth="1.5" />
+    <circle cx="16" cy="16" r="1.5" fill="#fff" />
+    <path d="M16 2a14 14 0 0 1 0 28" stroke="#444" strokeWidth="1" fill="none" />
+    <path d="M16 30a14 14 0 0 1 0-28" stroke="#444" strokeWidth="1" fill="none" />
+  </svg>
+);
+const BothIcon = (props) => (
+  <svg viewBox="0 0 32 32" width="22" height="22" {...props}>
+    {/* Vinyle */}
+    <circle cx="16" cy="16" r="14" fill="#222" stroke="#111" strokeWidth="2" />
+    <circle cx="16" cy="16" r="4.5" fill="#e53e3e" stroke="#fff" strokeWidth="1.5" />
+    <circle cx="16" cy="16" r="1.5" fill="#fff" />
+    <path d="M16 2a14 14 0 0 1 0 28" stroke="#444" strokeWidth="1" fill="none" />
+    <path d="M16 30a14 14 0 0 1 0-28" stroke="#444" strokeWidth="1" fill="none" />
+    {/* CD en surimpression */}
+    <circle cx="22" cy="10" r="7" fill="url(#cd-rainbow)" stroke="#bbb" strokeWidth="1.5" />
+    <circle cx="22" cy="10" r="2" fill="#222" stroke="#fff" strokeWidth="1" />
+    <defs>
+      <radialGradient id="cd-rainbow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="#fff" />
+        <stop offset="60%" stopColor="#b3e0ff" />
+        <stop offset="80%" stopColor="#f0c" />
+        <stop offset="100%" stopColor="#aaf" />
+      </radialGradient>
+    </defs>
+  </svg>
+);
 import { ViewIcon, HamburgerIcon, SmallCloseIcon, MinusIcon, AddIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
@@ -9,7 +55,7 @@ import ProfilePage from './components/ProfilePage'
 import AddStudioAlbum from './components/AddStudioAlbum'
 import AlbumDetailsModal from './components/AlbumDetailsModal'
 import StudioStats from './components/StudioStats'
-import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure, Tooltip } from '@chakra-ui/react';
+import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure } from '@chakra-ui/react';
 import { auth } from './firebase'
 // Les hooks doivent être dans le composant App
 import reactLogo from './assets/react.svg'
@@ -45,8 +91,9 @@ function App() {
   const [albums, setAlbums] = useState([])
   const [albumsPerRow, setAlbumsPerRow] = useState(5)
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
-  // Détermination du rôle contributeur
+  // Détermination des rôles
   const isContributor = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('contributeur');
+  const isUser = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('utilisateur');
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -55,18 +102,33 @@ function App() {
     const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
     setLoading(true);
+    const jwt = getCookie('jwt');
     fetch(`${apiBase}/api/albums`, {
       headers: {
-        'X-API-KEY': apiKey
+        'X-API-KEY': apiKey,
+        ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
       }
     })
-      .then(res => res.json())
-      .then(data => {
+      .then(async res => {
+        if (res.status === 403) {
+          setError('Accès interdit (403) : vérifie ta clé API ou ton authentification.');
+          setAlbums([]);
+          setLoading(false);
+          return;
+        }
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          data = [];
+        }
+        if (!Array.isArray(data)) data = [];
         setAlbums(data);
         setLoading(false);
       })
       .catch(err => {
         setError(err.message);
+        setAlbums([]);
         setLoading(false);
       });
   };
@@ -289,14 +351,42 @@ function App() {
                         }}
                       >
                         {album.cover_url && (
-                          <Image
-                            src={album.cover_url}
-                            alt={album.title}
-                            objectFit="cover"
-                            w="100%"
-                            h="100%"
-                            transition="all 0.3s"
-                          />
+                          <Box position="relative" w="100%" h="100%">
+                            <Image
+                              src={album.cover_url}
+                              alt={album.title}
+                              objectFit="cover"
+                              w="100%"
+                              h="100%"
+                              transition="all 0.3s"
+                            />
+                            {typeof album.collection !== 'undefined' && album.collection && typeof album.collection === 'object' && (album.collection.cd || album.collection.vinyl) && (
+                              <Tooltip
+                                label={
+                                  album.collection.cd && album.collection.vinyl
+                                    ? 'Dans ta collection (CD & Vinyle)'
+                                    : album.collection.cd
+                                    ? 'Dans ta collection (CD)'
+                                    : album.collection.vinyl
+                                    ? 'Dans ta collection (Vinyle)'
+                                    : ''
+                                }
+                                placement="top"
+                                hasArrow
+                              >
+                                <Box position="absolute" top={1} right={1} zIndex={2} bg="whiteAlpha.900" borderRadius="full" p={0.5} boxShadow="lg" border="2px solid #805ad5" display="flex" alignItems="center" justifyContent="center" minW="28px" minH="28px">
+                                  {album.collection.cd && album.collection.vinyl ? (
+                                    <BothIcon />
+                                  ) : album.collection.cd ? (
+                                    <CdIcon />
+                                  ) : album.collection.vinyl ? (
+                                    <VinylIcon />
+                                  ) : null}
+                                </Box>
+                              </Tooltip>
+                            )}
+                            {/* Debug collection */}
+                          </Box>
                         )}
                         <Box
                           position="absolute"
@@ -338,6 +428,7 @@ function App() {
           closeDetails();
         }}
         isContributor={isContributor}
+        isUser={isUser}
         refreshAlbums={fetchAlbums}
       />
               </Box>

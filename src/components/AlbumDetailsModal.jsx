@@ -1,16 +1,70 @@
 import { useEffect, useState } from 'react';
-import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, Box, Text, Image, Spinner, Badge, Stack, Tag, TagLabel, Wrap, WrapItem, Button, useToast } from '@chakra-ui/react';
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, Box, Text, Image, Spinner, Badge, Stack, Tag, TagLabel, Wrap, WrapItem, Button, useToast, Checkbox, Flex } from '@chakra-ui/react';
 
 import { getCookie } from '../utils/cookie';
 
-export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbums, isContributor, refreshAlbums }) {
+export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbums, isContributor, isUser, refreshAlbums }) {
+  const [hasChanged, setHasChanged] = useState(false);
   const [album, setAlbum] = useState(null);
+  const [cd, setCd] = useState(false);
+  const [vinyl, setVinyl] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [rawResponse, setRawResponse] = useState("");
   const [deleting, setDeleting] = useState(false);
   const toast = useToast();
   const jwt = getCookie('jwt');
+  // Synchroniser les cases à cocher avec la collection de l'album
+  useEffect(() => {
+    if (isOpen && album && album.collection) {
+      setCd(!!album.collection.cd);
+      setVinyl(!!album.collection.vinyl);
+    } else if (isOpen) {
+      setCd(false);
+      setVinyl(false);
+    }
+  }, [isOpen, album]);
+  const handleAddToCollection = async () => {
+    if (!albumId || (!cd && !vinyl)) {
+      toast({ title: 'Sélectionne au moins un format', status: 'warning', duration: 2500 });
+      return;
+    }
+  setAdding(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/collection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': import.meta.env.VITE_API_KEY,
+          ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+        },
+        body: JSON.stringify({ album_id: albumId, cd, vinyl })
+      });
+      if (res.ok) {
+        toast({ title: 'Ajouté à ta collection !', status: 'success', duration: 2000 });
+        setHasChanged(true);
+        // Recharger les infos de l'album après ajout à la collection
+        fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
+          headers: {
+            'X-API-KEY': import.meta.env.VITE_API_KEY,
+            ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+          }
+        })
+          .then(async (res) => {
+            if (!res.ok) throw new Error('Erreur lors du rechargement');
+            const data = await res.json();
+            setAlbum(data);
+          })
+          .catch(() => {});
+      } else {
+        toast({ title: 'Erreur lors de l\'ajout', status: 'error', duration: 3000 });
+      }
+    } catch (e) {
+      toast({ title: 'Erreur réseau', status: 'error', duration: 3000 });
+    }
+    setAdding(false);
+  };
 
   useEffect(() => {
     if (!isOpen || !albumId) return;
@@ -19,7 +73,8 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
     setAlbum(null);
     fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
       headers: {
-        'X-API-KEY': import.meta.env.VITE_API_KEY
+        'X-API-KEY': import.meta.env.VITE_API_KEY,
+        ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
       }
     })
       .then(async (res) => {
@@ -55,8 +110,15 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
     setDeleting(false);
   };
 
+  // Handler pour la fermeture de la modale
+  const handleClose = () => {
+    if (hasChanged && refreshAlbums) refreshAlbums();
+    setHasChanged(false);
+    onClose();
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="lg">
+    <Modal isOpen={isOpen} onClose={handleClose} size="lg">
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Détails de l'album</ModalHeader>
@@ -112,6 +174,18 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
                   <Button colorScheme="red" size="sm" mt={4} isLoading={deleting} onClick={handleDelete}>
                     Supprimer l'album
                   </Button>
+                )}
+                {isUser && (
+                  <Box mt={6}>
+                    <Text fontWeight="semibold" mb={2}>Ajouter à ma collection :</Text>
+                    <Flex gap={4} mb={2}>
+                      <Checkbox isChecked={cd} onChange={e => setCd(e.target.checked)} colorScheme="purple">CD</Checkbox>
+                      <Checkbox isChecked={vinyl} onChange={e => setVinyl(e.target.checked)} colorScheme="purple">Vinyle</Checkbox>
+                    </Flex>
+                    <Button colorScheme="purple" size="sm" isLoading={adding} onClick={handleAddToCollection}>
+                      Ajouter à ma collection
+                    </Button>
+                  </Box>
                 )}
               </Box>
             </Stack>
