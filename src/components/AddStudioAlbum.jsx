@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { Box, Button, Input, FormControl, FormLabel, useToast, useColorMode, Flex, Icon, Text } from '@chakra-ui/react';
+import { Box, Button, Input, FormControl, FormLabel, useToast, useColorMode, Flex, Icon, Text, Switch } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { getCookie } from '../utils/cookie';
 
 export default function AddStudioAlbum({ onAlbumAdded }) {
-  const [masterId, setMasterId] = useState('');
+  const [id, setId] = useState('');
+  const [mode, setMode] = useState('master'); // 'master' ou 'release'
   const [loading, setLoading] = useState(false);
   const toast = useToast();
   const { colorMode } = useColorMode();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!masterId || isNaN(Number(masterId))) {
-      toast({ title: 'Master ID invalide', status: 'error', duration: 3000 });
+    if (!id || isNaN(Number(id))) {
+      toast({ title: `${mode === 'master' ? 'Master' : 'Release'} ID invalide`, status: 'error', duration: 3000 });
       return;
     }
     setLoading(true);
@@ -20,7 +21,8 @@ export default function AddStudioAlbum({ onAlbumAdded }) {
       const apiBase = import.meta.env.VITE_API_URL;
       const apiKey = import.meta.env.VITE_API_KEY;
       const jwt = getCookie('jwt');
-      const res = await fetch(`${apiBase}/api/albums/studio?master_id=${masterId}`, {
+      const url = `${apiBase}/api/albums/studio?discogs_id=${id}&discogs_type=${mode}`;
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'X-API-KEY': apiKey,
@@ -28,9 +30,9 @@ export default function AddStudioAlbum({ onAlbumAdded }) {
         }
       });
       if (!res.ok) throw new Error('Erreur API');
-  toast({ title: 'Album studio ajouté !', status: 'success', duration: 3000 });
-  setMasterId('');
-  if (onAlbumAdded) onAlbumAdded();
+      toast({ title: `Album studio ajouté via ${mode === 'master' ? 'master' : 'release'} !`, status: 'success', duration: 3000 });
+      setId('');
+      if (onAlbumAdded) onAlbumAdded();
     } catch (err) {
       toast({ title: err.message || 'Erreur', status: 'error', duration: 3000 });
     } finally {
@@ -46,13 +48,27 @@ export default function AddStudioAlbum({ onAlbumAdded }) {
           Ajouter un album studio
         </Text>
       </Flex>
+      <FormControl display="flex" alignItems="center" mb={2}>
+        <Switch
+          id="mode-switch"
+          isChecked={mode === 'release'}
+          onChange={() => setMode(mode === 'master' ? 'release' : 'master')}
+          colorScheme="purple"
+          mr={2}
+        />
+        <FormLabel htmlFor="mode-switch" mb={0} fontWeight="semibold" cursor="pointer">
+          {mode === 'master' ? 'Mode master (par défaut)' : 'Mode release'}
+        </FormLabel>
+      </FormControl>
       <FormControl mb={5} isRequired>
-        <FormLabel fontWeight="semibold">Identifiant Discogs (master_id)</FormLabel>
+        <FormLabel fontWeight="semibold">
+          Identifiant Discogs ({mode === 'master' ? 'master_id' : 'release_id'})
+        </FormLabel>
         <Input
           type="number"
-          value={masterId}
-          onChange={e => setMasterId(e.target.value)}
-          placeholder="ex : 123456"
+          value={id}
+          onChange={e => setId(e.target.value)}
+          placeholder={mode === 'master' ? 'ex : 123456 (master)' : 'ex : 654321 (release)'}
           min={1}
           bg={colorMode === 'dark' ? 'brand.900' : 'white'}
           borderColor={colorMode === 'dark' ? 'purple.900' : 'purple.200'}
