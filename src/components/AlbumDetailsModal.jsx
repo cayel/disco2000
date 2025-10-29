@@ -1,22 +1,30 @@
 import { useEffect, useState } from 'react';
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, Box, Text, Image, Spinner, Badge, Stack, Tag, TagLabel, Wrap, WrapItem, Button, useToast, Checkbox, Flex } from '@chakra-ui/react';
 
-import { getCookie } from '../utils/cookie';
+import { getCookie, deleteCookie } from '../utils/cookie';
+import { isJwtExpired } from '../utils/jwt';
 
 export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbums, isContributor, isUser, refreshAlbums }) {
   const [hasChanged, setHasChanged] = useState(false);
   const [album, setAlbum] = useState(null);
-  const [cd, setCd] = useState(false);
-  const [vinyl, setVinyl] = useState(false);
+  // On force isUser à false si le JWT n'est pas présent ou expiré
+  let jwt = getCookie('jwt');
+  if (jwt && isJwtExpired(jwt)) {
+    deleteCookie('jwt');
+    jwt = null;
+  }
+  const isUserConnected = !!jwt && isUser === true;
+  const [cd, setCd] = useState(isUserConnected ? false : undefined);
+  const [vinyl, setVinyl] = useState(isUserConnected ? false : undefined);
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [rawResponse, setRawResponse] = useState("");
   const [deleting, setDeleting] = useState(false);
   const toast = useToast();
-  const jwt = getCookie('jwt');
   // Synchroniser les cases à cocher avec la collection de l'album
   useEffect(() => {
+    if (!isUserConnected) return;
     if (isOpen && album && album.collection) {
       setCd(!!album.collection.cd);
       setVinyl(!!album.collection.vinyl);
@@ -24,7 +32,7 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
       setCd(false);
       setVinyl(false);
     }
-  }, [isOpen, album]);
+  }, [isOpen, album, isUserConnected]);
   const handleAddToCollection = async () => {
     if (!albumId || (!cd && !vinyl)) {
       toast({ title: 'Sélectionne au moins un format', status: 'warning', duration: 2500 });
@@ -175,7 +183,8 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
                     Supprimer l'album
                   </Button>
                 )}
-                {isUser && (
+                {/* Bloc collection strictement masqué si non connecté (double vérification JWT et rôle) */}
+                {(jwt && isUser === true) ? (
                   <Box mt={6}>
                     <Text fontWeight="semibold" mb={2}>Ajouter à ma collection :</Text>
                     <Flex gap={4} mb={2}>
@@ -186,7 +195,7 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
                       Ajouter à ma collection
                     </Button>
                   </Box>
-                )}
+                ) : null}
               </Box>
             </Stack>
           )}

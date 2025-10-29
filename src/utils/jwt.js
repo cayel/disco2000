@@ -1,3 +1,16 @@
+// Vérifie si un JWT est expiré (retourne true si expiré ou invalide)
+export function isJwtExpired(token) {
+  if (!token) return true;
+  try {
+    const payload = decodeJwt(token);
+    if (!payload || !payload.exp) return true;
+    // exp est en secondes depuis epoch
+    const now = Math.floor(Date.now() / 1000);
+    return payload.exp < now;
+  } catch {
+    return true;
+  }
+}
 // Décodage JWT simple (sans vérification de signature)
 export function decodeJwt(token) {
   if (!token) return null;

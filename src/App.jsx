@@ -135,7 +135,7 @@ function App() {
 
   useEffect(() => {
     fetchAlbums();
-  }, []);
+  }, [jwt]);
 
   return (
     <>
@@ -205,7 +205,7 @@ function App() {
               title={user.displayName || user.email || 'Mon profil'}
             />
           )}
-          <GoogleAuthButton />
+          <GoogleAuthButton onLoginSuccess={fetchAlbums} />
           <IconButton
             aria-label={colorMode === 'light' ? 'Activer le mode sombre' : 'Activer le mode clair'}
             icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
@@ -360,7 +360,7 @@ function App() {
                               h="100%"
                               transition="all 0.3s"
                             />
-                            {typeof album.collection !== 'undefined' && album.collection && typeof album.collection === 'object' && (album.collection.cd || album.collection.vinyl) && (
+                            {isUser && typeof album.collection !== 'undefined' && album.collection && typeof album.collection === 'object' && (album.collection.cd || album.collection.vinyl) && (
                               <Tooltip
                                 label={
                                   album.collection.cd && album.collection.vinyl

@@ -3,10 +3,10 @@ import { Button, Icon } from '@chakra-ui/react';
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useState, useEffect } from 'react';
-import { setCookie } from '../utils/cookie';
+import { setCookie, deleteCookie } from '../utils/cookie';
 
 
-export default function GoogleAuthButton() {
+export default function GoogleAuthButton({ onLoginSuccess }) {
   const [user, setUser] = useState(() => auth.currentUser);
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
@@ -37,6 +37,7 @@ export default function GoogleAuthButton() {
       if (jwtData.access_token) {
         setCookie('jwt', jwtData.access_token, 7, true);
         window.dispatchEvent(new CustomEvent('jwt-updated', { detail: jwtData.access_token }));
+        if (onLoginSuccess) onLoginSuccess();
       }
     } catch (err) {
       alert('Erreur de connexion : ' + err.message);
@@ -45,7 +46,9 @@ export default function GoogleAuthButton() {
 
   const handleLogout = async () => {
     await signOut(auth);
+    deleteCookie('jwt');
     setUser(null);
+    window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null }));
   };
 
   return !user ? (
