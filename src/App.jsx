@@ -83,6 +83,16 @@ function App() {
     fetchAlbums();
   }, [fetchAlbums, jwt]);
 
+  const handleCollectionUpdate = useCallback((albumId, collection) => {
+    setAlbums(prev => prev.map(album => (
+      album.id === albumId ? { ...album, collection } : album
+    )));
+  }, []);
+
+  const handleAlbumDelete = useCallback((albumId) => {
+    setAlbums(prev => prev.filter(album => album.id !== albumId));
+  }, []);
+
   // Mémorisation de la liste des artistes uniques pour le Select
   const uniqueArtists = useMemo(() => {
     return [...new Set(albums.map(a => a.artist))].sort();
@@ -316,6 +326,8 @@ function App() {
         isContributor={isContributor}
         isUser={isUser}
         refreshAlbums={fetchAlbums}
+        onCollectionUpdate={handleCollectionUpdate}
+        onAlbumDelete={handleAlbumDelete}
       />
               </Box>
             </Box>

@@ -4,8 +4,16 @@ import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, Modal
 import { getCookie, deleteCookie } from '../utils/cookie';
 import { isJwtExpired } from '../utils/jwt';
 
-export default function AlbumDetailsModal({ albumId, isOpen, onClose, isContributor, isUser, refreshAlbums }) {
-  const [hasChanged, setHasChanged] = useState(false);
+export default function AlbumDetailsModal({
+  albumId,
+  isOpen,
+  onClose,
+  isContributor,
+  isUser,
+  refreshAlbums,
+  onCollectionUpdate,
+  onAlbumDelete,
+}) {
   const [album, setAlbum] = useState(null);
   // On force isUser à false si le JWT n'est pas présent ou expiré
   let jwt = getCookie('jwt');
@@ -32,12 +40,15 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, isContribu
       setVinyl(false);
     }
   }, [isOpen, album, isUserConnected]);
-  const handleAddToCollection = async () => {
-    if (!albumId || (!cd && !vinyl)) {
-      toast({ title: 'Sélectionne au moins un format', status: 'warning', duration: 2500 });
-      return;
-    }
-  setAdding(true);
+  const handleSaveCollection = async () => {
+    if (!albumId) return;
+    setAdding(true);
+    const payload = {
+      album_id: albumId,
+      cd: Boolean(cd),
+      vinyl: Boolean(vinyl),
+    };
+    const isRemoving = !payload.cd && !payload.vinyl;
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/collection`, {
         method: 'POST',
@@ -46,31 +57,28 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, isContribu
           'X-API-KEY': import.meta.env.VITE_API_KEY,
           ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
         },
-        body: JSON.stringify({ album_id: albumId, cd, vinyl })
+        body: JSON.stringify(payload)
       });
-      if (res.ok) {
-        toast({ title: 'Ajouté à ta collection !', status: 'success', duration: 2000 });
-        setHasChanged(true);
-        // Recharger les infos de l'album après ajout à la collection
-        fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
-          headers: {
-            'X-API-KEY': import.meta.env.VITE_API_KEY,
-            ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-          }
-        })
-          .then(async (res) => {
-            if (!res.ok) throw new Error('Erreur lors du rechargement');
-            const data = await res.json();
-            setAlbum(data);
-          })
-          .catch(() => {});
-      } else {
-        toast({ title: 'Erreur lors de l\'ajout', status: 'error', duration: 3000 });
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => '');
+        throw new Error(errorText || 'Erreur API');
       }
-    } catch {
-      toast({ title: 'Erreur réseau', status: 'error', duration: 3000 });
+      const successMessage = isRemoving ? 'Supprimé de ta collection' : 'Collection mise à jour';
+      toast({ title: successMessage, status: 'success', duration: 2000 });
+      const nextCollection = isRemoving ? null : { cd: payload.cd, vinyl: payload.vinyl };
+      setAlbum(prev => (prev ? { ...prev, collection: nextCollection } : prev));
+      setCd(payload.cd);
+      setVinyl(payload.vinyl);
+      if (onCollectionUpdate) {
+        onCollectionUpdate(albumId, nextCollection);
+      } else if (refreshAlbums) {
+        refreshAlbums();
+      }
+    } catch (err) {
+      toast({ title: err?.message || 'Erreur réseau', status: 'error', duration: 3000 });
+    } finally {
+      setAdding(false);
     }
-    setAdding(false);
   };
 
   useEffect(() => {
@@ -106,8 +114,12 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, isContribu
       });
       if (res.ok) {
         toast({ title: 'Album supprimé', status: 'success', duration: 2000 });
+        if (onAlbumDelete) {
+          onAlbumDelete(albumId);
+        } else if (refreshAlbums) {
+          refreshAlbums();
+        }
         onClose();
-        if (refreshAlbums) refreshAlbums();
       } else {
         toast({ title: 'Erreur lors de la suppression', status: 'error', duration: 3000 });
       }
@@ -119,8 +131,6 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, isContribu
 
   // Handler pour la fermeture de la modale
   const handleClose = () => {
-    if (hasChanged && refreshAlbums) refreshAlbums();
-    setHasChanged(false);
     onClose();
   };
 
@@ -190,8 +200,8 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, isContribu
                       <Checkbox isChecked={cd} onChange={e => setCd(e.target.checked)} colorScheme="purple">CD</Checkbox>
                       <Checkbox isChecked={vinyl} onChange={e => setVinyl(e.target.checked)} colorScheme="purple">Vinyle</Checkbox>
                     </Flex>
-                    <Button colorScheme="purple" size="sm" isLoading={adding} onClick={handleAddToCollection}>
-                      Ajouter à ma collection
+                    <Button colorScheme="purple" size="sm" isLoading={adding} onClick={handleSaveCollection}>
+                      Mettre à jour ma collection
                     </Button>
                   </Box>
                 ) : null}
