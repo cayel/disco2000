@@ -35,3 +35,4 @@ coverage/
 *.sln
 *.sw?
 AUDIT.md
+OPTIMISATIONS_PERFORMANCE.md

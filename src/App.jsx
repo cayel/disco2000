@@ -1,53 +1,7 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
 import { getCookie } from './utils/cookie';
-import { useState, useEffect, useCallback } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, Image, Badge, Stack, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip } from '@chakra-ui/react'
-// Icônes inline pour CD et vinyle
-// Icônes réalistes et colorées
-const CdIcon = (props) => (
-  <svg viewBox="0 0 32 32" width="22" height="22" {...props}>
-    <defs>
-      <radialGradient id="cd-rainbow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#fff" />
-        <stop offset="60%" stopColor="#b3e0ff" />
-        <stop offset="80%" stopColor="#f0c" />
-        <stop offset="100%" stopColor="#aaf" />
-      </radialGradient>
-    </defs>
-    <circle cx="16" cy="16" r="14" fill="url(#cd-rainbow)" stroke="#bbb" strokeWidth="2" />
-    <circle cx="16" cy="16" r="4" fill="#222" stroke="#fff" strokeWidth="1.5" />
-  </svg>
-);
-const VinylIcon = (props) => (
-  <svg viewBox="0 0 32 32" width="22" height="22" {...props}>
-    <circle cx="16" cy="16" r="14" fill="#222" stroke="#111" strokeWidth="2" />
-    <circle cx="16" cy="16" r="4.5" fill="#e53e3e" stroke="#fff" strokeWidth="1.5" />
-    <circle cx="16" cy="16" r="1.5" fill="#fff" />
-    <path d="M16 2a14 14 0 0 1 0 28" stroke="#444" strokeWidth="1" fill="none" />
-    <path d="M16 30a14 14 0 0 1 0-28" stroke="#444" strokeWidth="1" fill="none" />
-  </svg>
-);
-const BothIcon = (props) => (
-  <svg viewBox="0 0 32 32" width="22" height="22" {...props}>
-    {/* Vinyle */}
-    <circle cx="16" cy="16" r="14" fill="#222" stroke="#111" strokeWidth="2" />
-    <circle cx="16" cy="16" r="4.5" fill="#e53e3e" stroke="#fff" strokeWidth="1.5" />
-    <circle cx="16" cy="16" r="1.5" fill="#fff" />
-    <path d="M16 2a14 14 0 0 1 0 28" stroke="#444" strokeWidth="1" fill="none" />
-    <path d="M16 30a14 14 0 0 1 0-28" stroke="#444" strokeWidth="1" fill="none" />
-    {/* CD en surimpression */}
-    <circle cx="22" cy="10" r="7" fill="url(#cd-rainbow)" stroke="#bbb" strokeWidth="1.5" />
-    <circle cx="22" cy="10" r="2" fill="#222" stroke="#fff" strokeWidth="1" />
-    <defs>
-      <radialGradient id="cd-rainbow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#fff" />
-        <stop offset="60%" stopColor="#b3e0ff" />
-        <stop offset="80%" stopColor="#f0c" />
-        <stop offset="100%" stopColor="#aaf" />
-      </radialGradient>
-    </defs>
-  </svg>
-);
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip } from '@chakra-ui/react'
 import { AddIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
@@ -55,6 +9,7 @@ import ProfilePage from './components/ProfilePage'
 import AddStudioAlbum from './components/AddStudioAlbum'
 import AlbumDetailsModal from './components/AlbumDetailsModal'
 import StudioStats from './components/StudioStats'
+import AlbumCard from './components/AlbumCard'
 import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure } from '@chakra-ui/react';
 import { auth } from './firebase'
 import './App.css'
@@ -127,6 +82,27 @@ function App() {
   useEffect(() => {
     fetchAlbums();
   }, [fetchAlbums, jwt]);
+
+  // Mémorisation de la liste des artistes uniques pour le Select
+  const uniqueArtists = useMemo(() => {
+    return [...new Set(albums.map(a => a.artist))].sort();
+  }, [albums]);
+
+  // Mémorisation des années disponibles pour le RangeSlider
+  const availableYears = useMemo(() => {
+    const years = [...new Set(albums.map(a => a.year))].filter(Boolean).map(Number).sort((a, b) => a - b);
+    return years.length > 0 ? { min: years[0], max: years[years.length - 1], all: years } : null;
+  }, [albums]);
+
+  // Mémorisation des albums filtrés
+  const filteredAlbums = useMemo(() => {
+    return albums.filter(album => {
+      const matchesArtist = !artistFilter || album.artist === artistFilter;
+      const matchesYear = yearRange[0] === null || yearRange[1] === null || 
+        (album.year >= yearRange[0] && album.year <= yearRange[1]);
+      return matchesArtist && matchesYear;
+    });
+  }, [albums, artistFilter, yearRange]);
 
   return (
     <>
@@ -265,25 +241,21 @@ function App() {
                   _hover={{ borderColor: 'accent.500' }}
                   mb={4}
                 >
-                  {[...new Set(albums.map(a => a.artist))].sort().map(artist => (
+                  {uniqueArtists.map(artist => (
                     <option key={artist} value={artist}>{artist}</option>
                   ))}
                 </Select>
                 {/* Double slider (RangeSlider) pour plage d'années */}
-                {(() => {
-                  const years = [...new Set(albums.map(a => a.year))].filter(Boolean).map(Number).sort((a, b) => a - b);
-                  if (years.length === 0) return null;
-                  const minYear = years[0];
-                  const maxYear = years[years.length - 1];
-                  const [minSelected, maxSelected] = yearRange[0] !== null ? yearRange : [minYear, maxYear];
+                {availableYears && (() => {
+                  const [minSelected, maxSelected] = yearRange[0] !== null ? yearRange : [availableYears.min, availableYears.max];
                   return (
                     <Box mb={4}>
                       <Text fontSize="sm" mb={1} color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
                         Plage d'années : {minSelected} - {maxSelected}
                       </Text>
                       <RangeSlider
-                        min={minYear}
-                        max={maxYear}
+                        min={availableYears.min}
+                        max={availableYears.max}
                         step={1}
                         value={[minSelected, maxSelected]}
                         onChange={val => setYearRange(val)}
@@ -295,7 +267,7 @@ function App() {
                         <RangeSliderThumb index={0} />
                         <RangeSliderThumb index={1} />
                       </RangeSlider>
-                      <Button mt={1} size="xs" variant="ghost" colorScheme="gray" onClick={() => setYearRange([minYear, maxYear])}>Toutes les années</Button>
+                      <Button mt={1} size="xs" variant="ghost" colorScheme="gray" onClick={() => setYearRange([availableYears.min, availableYears.max])}>Toutes les années</Button>
                     </Box>
                   );
                 })()}
@@ -319,96 +291,19 @@ function App() {
               {/* Grille d'albums à droite */}
               <Box flex={1}>
                 <SimpleGrid columns={albumsPerRow} spacing={2} mt={2}>
-                  {albums
-                    .filter(album =>
-                      (!artistFilter || album.artist === artistFilter) &&
-                      (yearRange[0] === null || yearRange[1] === null || (album.year >= yearRange[0] && album.year <= yearRange[1]))
-                    )
-                    .map((album, index) => (
-                      <Box
-                        key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
-                        position="relative"
-                        borderRadius="xl"
-                        overflow="hidden"
-                        boxShadow="xl"
-                        bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                        _hover={{ boxShadow: '2xl', transform: 'scale(1.04)' }}
-                        aspectRatio={1}
-                        cursor="pointer"
-                        transition="background 0.3s"
-                        onClick={() => {
-                          setSelectedAlbumId(album.id);
-                          openDetails();
-                        }}
-                      >
-                        {album.cover_url && (
-                          <Box position="relative" w="100%" h="100%">
-                            <Image
-                              src={album.cover_url}
-                              alt={album.title}
-                              objectFit="cover"
-                              w="100%"
-                              h="100%"
-                              transition="all 0.3s"
-                            />
-                            {isUser && typeof album.collection !== 'undefined' && album.collection && typeof album.collection === 'object' && (album.collection.cd || album.collection.vinyl) && (
-                              <Tooltip
-                                label={
-                                  album.collection.cd && album.collection.vinyl
-                                    ? 'Dans ta collection (CD & Vinyle)'
-                                    : album.collection.cd
-                                    ? 'Dans ta collection (CD)'
-                                    : album.collection.vinyl
-                                    ? 'Dans ta collection (Vinyle)'
-                                    : ''
-                                }
-                                placement="top"
-                                hasArrow
-                              >
-                                <Box position="absolute" top={1} right={1} zIndex={2} bg="whiteAlpha.900" borderRadius="full" p={0.5} boxShadow="lg" border="2px solid #805ad5" display="flex" alignItems="center" justifyContent="center" minW="28px" minH="28px">
-                                  {album.collection.cd && album.collection.vinyl ? (
-                                    <BothIcon />
-                                  ) : album.collection.cd ? (
-                                    <CdIcon />
-                                  ) : album.collection.vinyl ? (
-                                    <VinylIcon />
-                                  ) : null}
-                                </Box>
-                              </Tooltip>
-                            )}
-                            {/* Debug collection */}
-                          </Box>
-                        )}
-                        <Box
-                          position="absolute"
-                          top={0}
-                          left={0}
-                          w="100%"
-                          h="100%"
-                          bg="rgba(35,37,38,0.92)"
-                          color="#f5f6fa"
-                          opacity={0}
-                          _hover={{ opacity: 1 }}
-                          display="flex"
-                          flexDirection="column"
-                          alignItems="center"
-                          justifyContent="center"
-                          transition="opacity 0.3s"
-                          p={4}
-                          textAlign="center"
-                        >
-                          <Heading as="h2" size="sm" mb={2} color="brand.700" fontWeight="bold" noOfLines={2}>
-                            {album.title}
-                          </Heading>
-                          <Badge bg="accent.500" color="brand.900" fontSize="0.9em" px={2} py={1} borderRadius="md" boxShadow="md" mb={2}>
-                            {album.year}
-                          </Badge>
-                          <Text fontWeight="bold" color="accent.600" fontSize="md" noOfLines={1}>
-                            {album.artist}
-                          </Text>
-                        </Box>
-                      </Box>
-                    ))}
+                  {filteredAlbums.map((album, index) => (
+                    <AlbumCard
+                      key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
+                      album={album}
+                      index={index}
+                      colorMode={colorMode}
+                      isUser={isUser}
+                      onClick={() => {
+                        setSelectedAlbumId(album.id);
+                        openDetails();
+                      }}
+                    />
+                  ))}
                 </SimpleGrid>
   {/* Fenêtre modale de détails d'album */}
       <AlbumDetailsModal
