@@ -1,6 +1,6 @@
-import { decodeJwt } from './utils/jwt';
+import { decodeJwt, isJwtExpired } from './utils/jwt';
 import { getCookie } from './utils/cookie';
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Heading, Box, Spinner, SimpleGrid, Text, Image, Badge, Stack, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip } from '@chakra-ui/react'
 // Icônes inline pour CD et vinyle
 // Icônes réalistes et colorées
@@ -48,7 +48,7 @@ const BothIcon = (props) => (
     </defs>
   </svg>
 );
-import { ViewIcon, HamburgerIcon, SmallCloseIcon, MinusIcon, AddIcon } from '@chakra-ui/icons'
+import { AddIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
@@ -57,9 +57,6 @@ import AlbumDetailsModal from './components/AlbumDetailsModal'
 import StudioStats from './components/StudioStats'
 import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure } from '@chakra-ui/react';
 import { auth } from './firebase'
-// Les hooks doivent être dans le composant App
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
@@ -72,19 +69,13 @@ function App() {
   const [user, setUser] = useState(() => auth.currentUser);
   const [showProfile, setShowProfile] = useState(false);
   const [showStats, setShowStats] = useState(false);
-    // Décodage du JWT pour les rôles
-    const jwt = getCookie('jwt');
-    const jwtPayload = decodeJwt(jwt);
+  // Décodage du JWT pour les rôles (avec vérification d'expiration)
+  const jwt = getCookie('jwt');
+  const jwtPayload = jwt && !isJwtExpired(jwt) ? decodeJwt(jwt) : null;
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
     return () => unsubscribe();
   }, []);
-  // Suppression des options de personnalisation d'affichage
-  const coverSizes = [
-    { value: 'sm', icon: <SmallCloseIcon boxSize={5} />, label: 'Petite' },
-    { value: 'md', icon: <MinusIcon boxSize={6} />, label: 'Moyenne' },
-    { value: 'lg', icon: <AddIcon boxSize={7} />, label: 'Grande' },
-  ];
   const [artistFilter, setArtistFilter] = useState('');
   const [yearRange, setYearRange] = useState([null, null]);
   const { colorMode, toggleColorMode } = useColorMode();
@@ -97,16 +88,16 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Fonction pour rafraîchir la liste des albums
-  const fetchAlbums = () => {
+  // Fonction pour rafraîchir la liste des albums (mémorisée avec useCallback)
+  const fetchAlbums = useCallback(() => {
     const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
     setLoading(true);
-    const jwt = getCookie('jwt');
+    const currentJwt = getCookie('jwt');
     fetch(`${apiBase}/api/albums`, {
       headers: {
         'X-API-KEY': apiKey,
-        ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+        ...(currentJwt ? { 'Authorization': `Bearer ${currentJwt}` } : {})
       }
     })
       .then(async res => {
@@ -131,11 +122,11 @@ function App() {
         setAlbums([]);
         setLoading(false);
       });
-  };
+  }, []);
 
   useEffect(() => {
     fetchAlbums();
-  }, [jwt]);
+  }, [fetchAlbums, jwt]);
 
   return (
     <>

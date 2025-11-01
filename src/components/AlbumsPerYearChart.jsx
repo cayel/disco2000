@@ -19,8 +19,8 @@ export default function AlbumsPerYearChart({ albums }) {
   const gridColor = isDark ? '#4b436a' : '#e2e8f0';
 
   return (
-    <Box w="100%" h="340px" maxW="1100px" mx="auto" my={8} bg={isDark ? 'brand.900' : 'white'} p={0} borderRadius="lg" boxShadow="md">
-      <ResponsiveContainer width="100%" height="100%">
+    <Box w="100%" minW="320px" h="340px" minH="240px" maxW="1100px" mx="auto" my={8} bg={isDark ? 'brand.900' : 'white'} p={0} borderRadius="lg" boxShadow="md">
+  <ResponsiveContainer width="100%" height="100%" minWidth={320} minHeight={240} aspect={2.8}>
         <BarChart data={data} margin={{ top: 24, right: 24, left: 24, bottom: 24 }}>
           <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
           <XAxis dataKey="year" stroke={chartFg} fontSize={14} tickLine={false} axisLine={{ stroke: gridColor }}>

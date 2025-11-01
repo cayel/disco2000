@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
+import { decodeJwt } from '../utils/jwt';
 import { getCookie } from '../utils/cookie';
-import { Box, Heading, Stat, StatLabel, StatNumber, useColorMode, Spinner, Text, Button, Flex } from '@chakra-ui/react';
+import { Box, Heading, Stat, StatLabel, StatNumber, useColorMode, Spinner, Text, Button, Flex, Tabs, TabList, TabPanels, Tab, TabPanel } from '@chakra-ui/react';
+import CollectionStats from './CollectionStats';
 import AlbumsPerYearChart from './AlbumsPerYearChart';
 
-export default function StudioStats({ onBack }) {
+export default function StudioStats() {
+  const jwt = getCookie('jwt');
+  const jwtPayload = decodeJwt(jwt);
+  const isUser = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('utilisateur');
   const [count, setCount] = useState(null);
   const [topYear, setTopYear] = useState(null);
   const [topArtist, setTopArtist] = useState(null);
@@ -16,7 +21,6 @@ export default function StudioStats({ onBack }) {
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
-    const jwt = getCookie('jwt');
     fetch(`${apiBase}/api/albums`, {
       headers: {
         'X-API-KEY': apiKey
@@ -82,39 +86,54 @@ export default function StudioStats({ onBack }) {
   }, []);
 
   return (
-  <Box w="100%" maxW="1100px" mx="auto" mt={10} p={0} borderRadius="xl" boxShadow="lg" bg={colorMode === 'dark' ? 'brand.900' : 'white'} textAlign="center">
-      <Heading as="h2" size="lg" mb={6} color={colorMode === 'dark' ? 'purple.200' : 'purple.700'}>
-        Statistiques
-      </Heading>
-      {loading ? (
-        <Spinner size="lg" />
-      ) : error ? (
-        <Text color="red.400">{error}</Text>
-      ) : (
-        <>
-          <Flex direction={{ base: 'column', md: 'row' }} gap={8} mb={8} w="100%" maxW="1100px" mx="auto" px={8} justify="center" align="stretch">
-            <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
-              <StatLabel fontSize="lg">Nombre total d'albums</StatLabel>
-              <StatNumber fontSize="4xl" color="purple.400">{count}</StatNumber>
-            </Stat>
-            <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
-              <StatLabel fontSize="lg">Nombre d'artistes différents</StatLabel>
-              <StatNumber fontSize="3xl" color="purple.500">{uniqueArtists}</StatNumber>
-            </Stat>
-            <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
-              <StatLabel fontSize="lg">Année la plus représentée</StatLabel>
-              <StatNumber fontSize="3xl" color="purple.600">{topYear ? topYear : 'N/A'}</StatNumber>
-            </Stat>
-            <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
-              <StatLabel fontSize="lg">Artiste le plus représenté</StatLabel>
-              <StatNumber fontSize="2xl" color="purple.700">{topArtist ? topArtist : 'N/A'}</StatNumber>
-            </Stat>
-          </Flex>
-          <Box w="100%" maxW="1100px" mx="auto" px={8}>
-            <AlbumsPerYearChart albums={albums} />
-          </Box>
-        </>
-      )}
+    <Box w="100%" maxW="1100px" mx="auto" mt={10} p={0} borderRadius="xl" boxShadow="lg" bg={colorMode === 'dark' ? 'brand.900' : 'white'} textAlign="center">
+      <Tabs variant="enclosed" colorScheme="purple" isFitted>
+        <TabList mb={4}>
+          <Tab>Statistiques générales</Tab>
+          {isUser && <Tab>Ma collection</Tab>}
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            <Heading as="h2" size="lg" mb={6} color={colorMode === 'dark' ? 'purple.200' : 'purple.700'}>
+              Statistiques
+            </Heading>
+            {loading ? (
+              <Spinner size="lg" />
+            ) : error ? (
+              <Text color="red.400">{error}</Text>
+            ) : (
+              <>
+                <Flex direction={{ base: 'column', md: 'row' }} gap={8} mb={8} w="100%" maxW="1100px" mx="auto" px={8} justify="center" align="stretch">
+                  <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
+                    <StatLabel fontSize="lg">Nombre total d'albums</StatLabel>
+                    <StatNumber fontSize="4xl" color="purple.400">{count}</StatNumber>
+                  </Stat>
+                  <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
+                    <StatLabel fontSize="lg">Nombre d'artistes différents</StatLabel>
+                    <StatNumber fontSize="3xl" color="purple.500">{uniqueArtists}</StatNumber>
+                  </Stat>
+                  <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
+                    <StatLabel fontSize="lg">Année la plus représentée</StatLabel>
+                    <StatNumber fontSize="3xl" color="purple.600">{topYear ? topYear : 'N/A'}</StatNumber>
+                  </Stat>
+                  <Stat flex={1} minW="0" p={6} borderRadius="lg" boxShadow="sm" bg={colorMode === 'dark' ? 'brand.800' : 'gray.50'}>
+                    <StatLabel fontSize="lg">Artiste le plus représenté</StatLabel>
+                    <StatNumber fontSize="2xl" color="purple.700">{topArtist ? topArtist : 'N/A'}</StatNumber>
+                  </Stat>
+                </Flex>
+                <Box w="100%" maxW="1100px" mx="auto" px={8}>
+                  <AlbumsPerYearChart albums={albums} />
+                </Box>
+              </>
+            )}
+          </TabPanel>
+          {isUser && (
+            <TabPanel>
+              <CollectionStats />
+            </TabPanel>
+          )}
+        </TabPanels>
+      </Tabs>
     </Box>
   );
 }

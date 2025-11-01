@@ -4,7 +4,7 @@ import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, Modal
 import { getCookie, deleteCookie } from '../utils/cookie';
 import { isJwtExpired } from '../utils/jwt';
 
-export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbums, isContributor, isUser, refreshAlbums }) {
+export default function AlbumDetailsModal({ albumId, isOpen, onClose, isContributor, isUser, refreshAlbums }) {
   const [hasChanged, setHasChanged] = useState(false);
   const [album, setAlbum] = useState(null);
   // On force isUser à false si le JWT n'est pas présent ou expiré
@@ -19,7 +19,6 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [rawResponse, setRawResponse] = useState("");
   const [deleting, setDeleting] = useState(false);
   const toast = useToast();
   // Synchroniser les cases à cocher avec la collection de l'album
@@ -68,7 +67,7 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
       } else {
         toast({ title: 'Erreur lors de l\'ajout', status: 'error', duration: 3000 });
       }
-    } catch (e) {
+    } catch {
       toast({ title: 'Erreur réseau', status: 'error', duration: 3000 });
     }
     setAdding(false);
@@ -90,9 +89,9 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
         const data = await res.json();
         setAlbum(data);
       })
-      .catch((e) => setError(e.message))
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [isOpen, albumId]);
+  }, [isOpen, albumId, jwt]);
 
   const handleDelete = async () => {
     if (!albumId) return;
@@ -112,7 +111,7 @@ export default function AlbumDetailsModal({ albumId, isOpen, onClose, debugAlbum
       } else {
         toast({ title: 'Erreur lors de la suppression', status: 'error', duration: 3000 });
       }
-    } catch (e) {
+    } catch {
       toast({ title: 'Erreur réseau', status: 'error', duration: 3000 });
     }
     setDeleting(false);

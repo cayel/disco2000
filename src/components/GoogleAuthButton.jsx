@@ -1,9 +1,9 @@
 
 import { Button, Icon } from '@chakra-ui/react';
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useState, useEffect } from 'react';
-import { setCookie, deleteCookie } from '../utils/cookie';
+import { setCookie } from '../utils/cookie';
 
 
 export default function GoogleAuthButton({ onLoginSuccess }) {
@@ -23,7 +23,9 @@ export default function GoogleAuthButton({ onLoginSuccess }) {
 
       // Envoi du id_token Google au backend pour JWT
       const idToken = await result.user.getIdToken();
-      console.log('[DEBUG] id_token Google envoyé au backend :', idToken);
+      if (import.meta.env.DEV) {
+        console.log('[DEBUG] id_token Google envoyé au backend');
+      }
       const jwtRes = await fetch(`${apiBase}/api/users/token`, {
         method: 'POST',
         headers: {
@@ -33,7 +35,9 @@ export default function GoogleAuthButton({ onLoginSuccess }) {
         body: JSON.stringify({ id_token: idToken })
       });
       const jwtData = await jwtRes.json();
-      console.log('[DEBUG] Réponse backend /api/users/token :', jwtData);
+      if (import.meta.env.DEV) {
+        console.log('[DEBUG] Réponse backend /api/users/token');
+      }
       if (jwtData.access_token) {
         setCookie('jwt', jwtData.access_token, 7, true);
         window.dispatchEvent(new CustomEvent('jwt-updated', { detail: jwtData.access_token }));
@@ -42,13 +46,6 @@ export default function GoogleAuthButton({ onLoginSuccess }) {
     } catch (err) {
       alert('Erreur de connexion : ' + err.message);
     }
-  };
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    deleteCookie('jwt');
-    setUser(null);
-    window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null }));
   };
 
   return !user ? (

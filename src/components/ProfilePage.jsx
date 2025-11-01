@@ -1,30 +1,18 @@
 import { Box, Heading, Text, Avatar, Button, Stack, useColorMode, Tag } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
 import { getCookie, deleteCookie } from '../utils/cookie';
+import { decodeJwt } from '../utils/jwt';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 
-export default function ProfilePage({ onLogout, onBack }) {
+export default function ProfilePage({ onLogout }) {
   const [user, setUser] = useState(null);
   const { colorMode } = useColorMode();
   const [jwt, setJwt] = useState(null);
   const [jwtPayload, setJwtPayload] = useState(null);
-  // Décodage du payload JWT
+  // Décodage du payload JWT en utilisant la fonction utilitaire
   useEffect(() => {
-    if (jwt) {
-      try {
-        const base64Url = jwt.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        setJwtPayload(JSON.parse(jsonPayload));
-      } catch (e) {
-        setJwtPayload(null);
-      }
-    } else {
-      setJwtPayload(null);
-    }
+    setJwtPayload(jwt ? decodeJwt(jwt) : null);
   }, [jwt]);
 
   // Toujours relire le cookie JWT à chaque affichage du profil

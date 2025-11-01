@@ -1,15 +1,18 @@
 export function deleteCookie(name) {
-  // Version sécurisée (prod)
-  document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=/; Secure; SameSite=Strict';
-  // Version non sécurisée (localhost/dev)
-  document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=/;';
-  // Sous-dossier (ex: /disco2000)
-  document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=/disco2000;';
-  // Sans path (par défaut)
-  document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0;';
-  // Sans path, secure
-  document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; Secure; SameSite=Strict';
-// }
+  // Supprime le cookie pour tous les chemins possibles
+  const paths = ['/', '/disco2000'];
+  const isSecure = window.location.protocol === 'https:';
+  
+  paths.forEach(path => {
+    // Version standard
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=${path}; SameSite=Strict`;
+    // Version sécurisée si HTTPS
+    if (isSecure) {
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0; path=${path}; Secure; SameSite=Strict`;
+    }
+  });
+  // Suppression sans path (par défaut)
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0;`;
 }
 // Utilitaires pour manipuler les cookies JWT
 export function setCookie(name, value, days = 7, secure = true) {
