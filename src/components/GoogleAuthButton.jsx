@@ -1,17 +1,23 @@
 
-import { Button, Icon } from '@chakra-ui/react';
+import { Button } from '@chakra-ui/react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useState, useEffect } from 'react';
 import { setCookie } from '../utils/cookie';
 
 
-export default function GoogleAuthButton({ onLoginSuccess }) {
-  const [user, setUser] = useState(() => auth.currentUser);
+export default function GoogleAuthButton({ onLoginSuccess, jwtToken }) {
+  const [user, setUser] = useState(() => (jwtToken ? auth.currentUser : null));
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!jwtToken) {
+      setUser(null);
+    }
+  }, [jwtToken]);
 
   const handleLogin = async () => {
     const provider = new GoogleAuthProvider();
@@ -48,7 +54,7 @@ export default function GoogleAuthButton({ onLoginSuccess }) {
     }
   };
 
-  return !user ? (
+  return !jwtToken ? (
     <Button
       variant="ghost"
       size="sm"

@@ -102,7 +102,7 @@ export default function AlbumDetailsModal({
   }, [isOpen, albumId, jwt]);
 
   const handleDelete = async () => {
-    if (!albumId) return;
+    if (!albumId || !jwt || !isContributor) return;
     setDeleting(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
@@ -187,7 +187,7 @@ export default function AlbumDetailsModal({
                 )}
                 {album.country && <Text mb={1}>{album.country}</Text>}
                 {album.description && <Text mt={2} fontSize="sm">{album.description}</Text>}
-                {isContributor && (
+                {jwt && isContributor && (
                   <Button colorScheme="red" size="sm" mt={4} isLoading={deleting} onClick={handleDelete}>
                     Supprimer l'album
                   </Button>

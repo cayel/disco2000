@@ -12,6 +12,7 @@ import StudioStats from './components/StudioStats'
 import AlbumCard from './components/AlbumCard'
 import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure } from '@chakra-ui/react';
 import { auth } from './firebase'
+import { signOut } from 'firebase/auth'
 import './App.css'
 
 function App() {
@@ -21,16 +22,68 @@ function App() {
     onOpen: openDetails,
     onClose: closeDetails
   } = useDisclosure();
-  const [user, setUser] = useState(() => auth.currentUser);
+  const [user, setUser] = useState(() => {
+    const current = auth.currentUser;
+    const jwtFromCookie = getCookie('jwt');
+    if (!jwtFromCookie || isJwtExpired(jwtFromCookie)) {
+      return null;
+    }
+    return current;
+  });
   const [showProfile, setShowProfile] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  // Décodage du JWT pour les rôles (avec vérification d'expiration)
-  const jwt = getCookie('jwt');
-  const jwtPayload = jwt && !isJwtExpired(jwt) ? decodeJwt(jwt) : null;
+  const [jwt, setJwt] = useState(() => {
+    const token = getCookie('jwt');
+    if (!token) return null;
+    if (isJwtExpired(token)) {
+      return null;
+    }
+    return token;
+  });
+
+  const jwtPayload = useMemo(() => (jwt ? decodeJwt(jwt) : null), [jwt]);
+
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(setUser);
+    const handleAuthChange = (firebaseUser) => {
+      if (!jwt) {
+        setUser(null);
+        return;
+      }
+      setUser(firebaseUser);
+    };
+    const unsubscribe = auth.onAuthStateChanged(handleAuthChange);
     return () => unsubscribe();
+  }, [jwt]);
+
+  useEffect(() => {
+    const handleJwtUpdated = (event) => {
+      const token = event.detail;
+      if (!token || isJwtExpired(token)) {
+        setJwt(null);
+        setUser(null);
+        signOut(auth).catch(() => {});
+        return;
+      }
+      setJwt(token);
+    };
+    window.addEventListener('jwt-updated', handleJwtUpdated);
+    return () => window.removeEventListener('jwt-updated', handleJwtUpdated);
   }, []);
+
+  useEffect(() => {
+    const token = getCookie('jwt');
+    if (!token || isJwtExpired(token)) {
+      if (jwt !== null) {
+        setJwt(null);
+      }
+      if (user !== null || auth.currentUser) {
+        signOut(auth).catch(() => {});
+      }
+      setUser(null);
+    } else if (token !== jwt) {
+      setJwt(token);
+    }
+  }, [jwt, user]);
   const [artistFilter, setArtistFilter] = useState('');
   const [yearRange, setYearRange] = useState([null, null]);
   const { colorMode, toggleColorMode } = useColorMode();
@@ -169,7 +222,7 @@ function App() {
           >
             Statistiques
           </Button>
-          {user && (
+          {user && jwt ? (
             <IconButton
               variant="ghost"
               size="sm"
@@ -181,8 +234,8 @@ function App() {
               onClick={() => setShowProfile(true)}
               title={user.displayName || user.email || 'Mon profil'}
             />
-          )}
-          <GoogleAuthButton onLoginSuccess={fetchAlbums} />
+          ) : null}
+          <GoogleAuthButton onLoginSuccess={fetchAlbums} jwtToken={jwt} />
           <IconButton
             aria-label={colorMode === 'light' ? 'Activer le mode sombre' : 'Activer le mode clair'}
             icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
