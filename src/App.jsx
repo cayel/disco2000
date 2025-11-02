@@ -1,5 +1,5 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
-import { getCookie } from './utils/cookie';
+import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip } from '@chakra-ui/react'
 import { AddIcon } from '@chakra-ui/icons'
@@ -43,6 +43,56 @@ function App() {
 
   const jwtPayload = useMemo(() => (jwt ? decodeJwt(jwt) : null), [jwt]);
 
+  const refreshAccessToken = useCallback(async () => {
+    const refreshToken = getCookie('refresh_token');
+    if (!refreshToken) return null;
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-KEY': import.meta.env.VITE_API_KEY,
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!response.ok) throw new Error('Refresh failed');
+      const data = await response.json();
+      if (!data?.access_token) throw new Error('Missing access token');
+      setCookie('jwt', data.access_token, 7, true);
+      if (data.refresh_token) {
+        setCookie('refresh_token', data.refresh_token, 30, true);
+      }
+      window.dispatchEvent(new CustomEvent('jwt-updated', { detail: data.access_token }));
+      setJwt(data.access_token);
+      return data.access_token;
+    } catch {
+      deleteCookie('jwt');
+      deleteCookie('refresh_token');
+      setJwt(null);
+      setUser(null);
+      if (auth.currentUser) {
+        signOut(auth).catch(() => {});
+      }
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!jwtPayload?.exp) return;
+    const now = Date.now();
+    const expirationMs = jwtPayload.exp * 1000;
+    const refreshLeadTime = 60 * 1000; // refresh 1 minute before expiry
+    const refreshAt = expirationMs - refreshLeadTime;
+    if (refreshAt <= now) {
+      refreshAccessToken();
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      refreshAccessToken();
+    }, refreshAt - now);
+    return () => clearTimeout(timeoutId);
+  }, [jwtPayload?.exp, refreshAccessToken]);
+
   useEffect(() => {
     const handleAuthChange = (firebaseUser) => {
       if (!jwt) {
@@ -59,6 +109,8 @@ function App() {
     const handleJwtUpdated = (event) => {
       const token = event.detail;
       if (!token || isJwtExpired(token)) {
+        deleteCookie('jwt');
+        deleteCookie('refresh_token');
         setJwt(null);
         setUser(null);
         signOut(auth).catch(() => {});
@@ -71,19 +123,35 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const token = getCookie('jwt');
-    if (!token || isJwtExpired(token)) {
+    let cancelled = false;
+    const ensureValidToken = async () => {
+      const token = getCookie('jwt');
+      if (token && !isJwtExpired(token)) {
+        if (token !== jwt && !cancelled) {
+          setJwt(token);
+        }
+        return;
+      }
+      const refreshed = await refreshAccessToken();
+      if (cancelled) return;
+      if (refreshed) {
+        return;
+      }
+      deleteCookie('jwt');
+      deleteCookie('refresh_token');
       if (jwt !== null) {
         setJwt(null);
       }
-      if (user !== null || auth.currentUser) {
+      setUser(null);
+      if (auth.currentUser) {
         signOut(auth).catch(() => {});
       }
-      setUser(null);
-    } else if (token !== jwt) {
-      setJwt(token);
-    }
-  }, [jwt, user]);
+    };
+    ensureValidToken();
+    return () => {
+      cancelled = true;
+    };
+  }, [jwt, refreshAccessToken]);
   const [artistFilter, setArtistFilter] = useState('');
   const [yearRange, setYearRange] = useState([null, null]);
   const { colorMode, toggleColorMode } = useColorMode();

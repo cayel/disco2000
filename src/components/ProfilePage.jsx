@@ -46,7 +46,7 @@ export default function ProfilePage({ onLogout }) {
         </>
       )}
       <Stack direction="row" spacing={4} justify="center" mb={2}>
-  <Button colorScheme="red" onClick={() => { signOut(auth); deleteCookie('jwt'); window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null })); onLogout && onLogout(); }}>Se déconnecter</Button>
+  <Button colorScheme="red" onClick={() => { signOut(auth); deleteCookie('jwt'); deleteCookie('refresh_token'); window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null })); onLogout && onLogout(); }}>Se déconnecter</Button>
       </Stack>
     </Box>
   );

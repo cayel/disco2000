@@ -46,6 +46,9 @@ export default function GoogleAuthButton({ onLoginSuccess, jwtToken }) {
       }
       if (jwtData.access_token) {
         setCookie('jwt', jwtData.access_token, 7, true);
+        if (jwtData.refresh_token) {
+          setCookie('refresh_token', jwtData.refresh_token, 30, true);
+        }
         window.dispatchEvent(new CustomEvent('jwt-updated', { detail: jwtData.access_token }));
         if (onLoginSuccess) onLoginSuccess();
       }
