@@ -3,7 +3,7 @@ import { Box, Button, Input, FormControl, FormLabel, useToast, useColorMode, Fle
 import { AddIcon } from '@chakra-ui/icons';
 import { getCookie } from '../utils/cookie';
 
-export default function AddStudioAlbum({ onClose, refreshAlbums }) {
+export default function AddStudioAlbum() {
   const [id, setId] = useState('');
   const [mode, setMode] = useState('master'); // 'master' ou 'release'
   const [loading, setLoading] = useState(false);
@@ -29,14 +29,18 @@ export default function AddStudioAlbum({ onClose, refreshAlbums }) {
           'Authorization': jwt ? `Bearer ${jwt}` : ''
         }
       });
+      const payload = await res.json().catch(() => null);
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `Erreur ${res.status}: ${res.statusText}`);
+        const errorMessage = payload?.message || `Erreur ${res.status}: ${res.statusText}`;
+        throw new Error(errorMessage);
       }
-      toast({ title: `Album studio ajouté via ${mode === 'master' ? 'master' : 'release'} !`, status: 'success', duration: 3000 });
+      toast({
+        title: 'Album studio ajouté',
+        status: 'success',
+        duration: 4000,
+        isClosable: true,
+      });
       setId('');
-      if (refreshAlbums) refreshAlbums();
-      if (onClose) onClose();
     } catch (err) {
       toast({ title: err.message || 'Erreur', status: 'error', duration: 3000 });
     } finally {

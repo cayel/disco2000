@@ -368,7 +368,7 @@ function App() {
             <ModalContent>
               <ModalCloseButton />
               <ModalBody p={0}>
-                <AddStudioAlbum onClose={onClose} refreshAlbums={fetchAlbums} />
+                <AddStudioAlbum />
               </ModalBody>
             </ModalContent>
           </Modal>
