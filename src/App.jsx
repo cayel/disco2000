@@ -10,6 +10,7 @@ import AddStudioAlbum from './components/AddStudioAlbum'
 import AlbumDetailsModal from './components/AlbumDetailsModal'
 import StudioStats from './components/StudioStats'
 import AlbumCard from './components/AlbumCard'
+import CollectionExplorer from './components/CollectionExplorer'
 import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure } from '@chakra-ui/react';
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
@@ -32,6 +33,7 @@ function App() {
   });
   const [showProfile, setShowProfile] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showCollection, setShowCollection] = useState(false);
   const [jwt, setJwt] = useState(() => {
     const token = getCookie('jwt');
     if (!token) return null;
@@ -70,6 +72,9 @@ function App() {
       deleteCookie('refresh_token');
       setJwt(null);
       setUser(null);
+      setShowProfile(false);
+      setShowStats(false);
+      setShowCollection(false);
       if (auth.currentUser) {
         signOut(auth).catch(() => {});
       }
@@ -97,6 +102,9 @@ function App() {
     const handleAuthChange = (firebaseUser) => {
       if (!jwt) {
         setUser(null);
+        setShowProfile(false);
+        setShowStats(false);
+        setShowCollection(false);
         return;
       }
       setUser(firebaseUser);
@@ -113,6 +121,9 @@ function App() {
         deleteCookie('refresh_token');
         setJwt(null);
         setUser(null);
+        setShowProfile(false);
+        setShowStats(false);
+        setShowCollection(false);
         signOut(auth).catch(() => {});
         return;
       }
@@ -143,6 +154,9 @@ function App() {
         setJwt(null);
       }
       setUser(null);
+      setShowProfile(false);
+      setShowStats(false);
+      setShowCollection(false);
       if (auth.currentUser) {
         signOut(auth).catch(() => {});
       }
@@ -165,11 +179,18 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  useEffect(() => {
+    if (!isUser && showCollection) {
+      setShowCollection(false);
+    }
+  }, [isUser, showCollection]);
+
   // Fonction pour rafraîchir la liste des albums (mémorisée avec useCallback)
   const fetchAlbums = useCallback(() => {
     const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
     setLoading(true);
+    setError(null);
     const currentJwt = getCookie('jwt');
     fetch(`${apiBase}/api/albums`, {
       headers: {
@@ -288,10 +309,14 @@ function App() {
         </Heading>
         <Box display="flex" alignItems="center" gap={2}>
           <Button
-            variant={!showStats && !showProfile ? 'solid' : 'ghost'}
+            variant={!showStats && !showProfile && !showCollection ? 'solid' : 'ghost'}
             size="sm"
             colorScheme="purple"
-            onClick={() => { setShowStats(false); setShowProfile(false); }}
+            onClick={() => {
+              setShowStats(false);
+              setShowProfile(false);
+              setShowCollection(false);
+            }}
             fontWeight="bold"
             px={3}
           >
@@ -301,12 +326,32 @@ function App() {
             variant={showStats && !showProfile ? 'solid' : 'ghost'}
             size="sm"
             colorScheme="purple"
-            onClick={() => { setShowStats(true); setShowProfile(false); }}
+            onClick={() => {
+              setShowStats(true);
+              setShowProfile(false);
+              setShowCollection(false);
+            }}
             fontWeight="bold"
             px={3}
           >
             Statistiques
           </Button>
+          {isUser && user && jwt ? (
+            <Button
+              variant={showCollection && !showProfile ? 'solid' : 'ghost'}
+              size="sm"
+              colorScheme="purple"
+              onClick={() => {
+                setShowCollection(true);
+                setShowStats(false);
+                setShowProfile(false);
+              }}
+              fontWeight="bold"
+              px={3}
+            >
+              Ma collection
+            </Button>
+          ) : null}
           {user && jwt ? (
             <IconButton
               variant="ghost"
@@ -316,7 +361,11 @@ function App() {
               icon={
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a8.38 8.38 0 0 1 13 0"/></svg>
               }
-              onClick={() => setShowProfile(true)}
+              onClick={() => {
+                setShowProfile(true);
+                setShowStats(false);
+                setShowCollection(false);
+              }}
               title={user.displayName || user.email || 'Mon profil'}
             />
           ) : null}
@@ -334,6 +383,14 @@ function App() {
         <ProfilePage onLogout={() => setShowProfile(false)} onBack={() => setShowProfile(false)} />
       ) : showStats ? (
         <StudioStats />
+      ) : showCollection && isUser ? (
+        <CollectionExplorer
+          albums={albums}
+          loading={loading}
+          error={error}
+          onRefresh={fetchAlbums}
+          isUser={isUser}
+        />
       ) : (
         <Box
           px={4}
