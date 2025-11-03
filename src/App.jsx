@@ -1,7 +1,7 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Select, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip } from '@chakra-ui/react'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton } from '@chakra-ui/react'
 import { AddIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
@@ -153,6 +153,7 @@ function App() {
     };
   }, [jwt, refreshAccessToken]);
   const [artistFilter, setArtistFilter] = useState('');
+  const [artistQuery, setArtistQuery] = useState('');
   const [yearRange, setYearRange] = useState([null, null]);
   const { colorMode, toggleColorMode } = useColorMode();
   const [albums, setAlbums] = useState([])
@@ -216,8 +217,24 @@ function App() {
 
   // Mémorisation de la liste des artistes uniques pour le Select
   const uniqueArtists = useMemo(() => {
-    return [...new Set(albums.map(a => a.artist))].sort();
+    return [...new Set(albums.map(a => a.artist))].sort((a, b) => a.localeCompare(b, 'fr'));
   }, [albums]);
+
+  const filteredArtistOptions = useMemo(() => {
+    if (!artistQuery) return uniqueArtists;
+    const lowered = artistQuery.toLowerCase();
+    return uniqueArtists.filter(artist => artist.toLowerCase().includes(lowered));
+  }, [artistQuery, uniqueArtists]);
+
+  const clearArtistFilter = useCallback(() => {
+    setArtistFilter('');
+    setArtistQuery('');
+  }, []);
+
+  const handleArtistSelect = useCallback((artist) => {
+    setArtistFilter(prev => (prev === artist ? '' : artist));
+    setArtistQuery('');
+  }, []);
 
   // Mémorisation des années disponibles pour le RangeSlider
   const availableYears = useMemo(() => {
@@ -361,21 +378,76 @@ function App() {
           {!loading && !error && (
             <Box display="flex" flexDirection={{ base: 'column', md: 'row' }} gap={8}>
               {/* Sidebar des filtres à gauche */}
-              <Box w={{ base: '100%', md: '280px' }} mb={{ base: 8, md: 0 }}>
-                <Select
-                  placeholder="Filtrer par artiste"
-                  value={artistFilter}
-                  onChange={e => setArtistFilter(e.target.value)}
-                  bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                  color={colorMode === 'dark' ? 'white' : 'brand.900'}
-                  borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
-                  _hover={{ borderColor: 'accent.500' }}
-                  mb={4}
-                >
-                  {uniqueArtists.map(artist => (
-                    <option key={artist} value={artist}>{artist}</option>
-                  ))}
-                </Select>
+              <Box w={{ base: '100%', md: '320px' }} mb={{ base: 8, md: 0 }}>
+                <FormControl mb={4}>
+                  <FormLabel fontSize="sm" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                    Artistes
+                  </FormLabel>
+                  <InputGroup size="sm">
+                    <Input
+                      placeholder="Rechercher un artiste"
+                      value={artistQuery}
+                      onChange={e => setArtistQuery(e.target.value)}
+                      bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                      color={colorMode === 'dark' ? 'white' : 'brand.900'}
+                      borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
+                      _hover={{ borderColor: 'accent.500' }}
+                      pr={artistQuery ? '2.5rem' : undefined}
+                    />
+                    {artistQuery && (
+                      <InputRightElement height="100%" pr={1}>
+                        <CloseButton size="sm" onClick={() => setArtistQuery('')} aria-label="Effacer la recherche d'artiste" />
+                      </InputRightElement>
+                    )}
+                  </InputGroup>
+                  <Text mt={2} fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                    {filteredArtistOptions.length} artiste{filteredArtistOptions.length > 1 ? 's' : ''} {artistQuery ? 'correspondent à la recherche' : 'disponibles'}
+                  </Text>
+                  <Box
+                    mt={2}
+                    borderWidth={1}
+                    borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                    borderRadius="md"
+                    maxH="280px"
+                    overflowY="auto"
+                    bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                    boxShadow="sm"
+                  >
+                    {filteredArtistOptions.length === 0 ? (
+                      <Text px={3} py={2} fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                        Aucun artiste trouvé
+                      </Text>
+                    ) : (
+                      filteredArtistOptions.map(artist => {
+                        const isActive = artistFilter === artist;
+                        return (
+                          <Button
+                            key={artist}
+                            justifyContent="flex-start"
+                            variant={isActive ? 'solid' : 'ghost'}
+                            colorScheme={isActive ? 'purple' : undefined}
+                            onClick={() => handleArtistSelect(artist)}
+                            w="100%"
+                            borderRadius={0}
+                            size="sm"
+                            fontWeight={isActive ? 'bold' : 'normal'}
+                            bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : 'transparent'}
+                            color={isActive ? (colorMode === 'dark' ? 'white' : 'purple.700') : (colorMode === 'dark' ? 'gray.100' : 'brand.900')}
+                            _hover={{ bg: isActive ? (colorMode === 'dark' ? 'purple.600' : 'purple.200') : (colorMode === 'dark' ? 'brand.700' : 'gray.100') }}
+                            textAlign="left"
+                          >
+                            {artist}
+                          </Button>
+                        );
+                      })
+                    )}
+                  </Box>
+                  {artistFilter && (
+                    <Button mt={2} size="sm" variant="link" colorScheme="purple" onClick={clearArtistFilter}>
+                      Réinitialiser le filtre
+                    </Button>
+                  )}
+                </FormControl>
                 {/* Double slider (RangeSlider) pour plage d'années */}
                 {availableYears && (() => {
                   const [minSelected, maxSelected] = yearRange[0] !== null ? yearRange : [availableYears.min, availableYears.max];
