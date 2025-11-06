@@ -1,8 +1,8 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton } from '@chakra-ui/react'
-import { AddIcon } from '@chakra-ui/icons'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge } from '@chakra-ui/react'
+import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
@@ -43,6 +43,14 @@ function App() {
     return token;
   });
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalAlbums, setTotalAlbums] = useState(0);
+
+  const [allAlbums, setAllAlbums] = useState([]);
+  const [allAlbumsLoading, setAllAlbumsLoading] = useState(false);
+  const [allAlbumsError, setAllAlbumsError] = useState(null);
+
   const jwtPayload = useMemo(() => (jwt ? decodeJwt(jwt) : null), [jwt]);
 
   const refreshAccessToken = useCallback(async () => {
@@ -75,6 +83,9 @@ function App() {
       setShowProfile(false);
       setShowStats(false);
       setShowCollection(false);
+      setPage(1);
+      setTotalAlbums(0);
+      setAllAlbums([]);
       if (auth.currentUser) {
         signOut(auth).catch(() => {});
       }
@@ -124,6 +135,9 @@ function App() {
         setShowProfile(false);
         setShowStats(false);
         setShowCollection(false);
+        setPage(1);
+        setTotalAlbums(0);
+        setAllAlbums([]);
         signOut(auth).catch(() => {});
         return;
       }
@@ -157,6 +171,9 @@ function App() {
       setShowProfile(false);
       setShowStats(false);
       setShowCollection(false);
+      setPage(1);
+      setTotalAlbums(0);
+      setAllAlbums([]);
       if (auth.currentUser) {
         signOut(auth).catch(() => {});
       }
@@ -169,6 +186,7 @@ function App() {
   const [artistFilter, setArtistFilter] = useState('');
   const [artistQuery, setArtistQuery] = useState('');
   const [yearRange, setYearRange] = useState([null, null]);
+  const [appliedYearRange, setAppliedYearRange] = useState([null, null]);
   const { colorMode, toggleColorMode } = useColorMode();
   const [albums, setAlbums] = useState([])
   const [albumsPerRow, setAlbumsPerRow] = useState(5)
@@ -185,93 +203,321 @@ function App() {
     }
   }, [isUser, showCollection]);
 
-  // Fonction pour rafraîchir la liste des albums (mémorisée avec useCallback)
-  const fetchAlbums = useCallback(() => {
+  const fetchAlbums = useCallback(async (pageValue, pageSizeValue, artistValue, yearRangeValue) => {
     const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
+    const effectivePage = Number(pageValue) > 0 ? Number(pageValue) : 1;
+    const effectivePageSize = Number(pageSizeValue) > 0 ? Number(pageSizeValue) : 20;
+    const cappedPageSize = Math.min(Math.max(effectivePageSize, 1), 100);
+    const hasYearFilter = Array.isArray(yearRangeValue) && yearRangeValue[0] !== null && yearRangeValue[1] !== null;
+
+    const params = new URLSearchParams({
+      page: String(effectivePage),
+      page_size: String(cappedPageSize),
+    });
+    if (artistValue) {
+      params.append('artist', artistValue);
+    }
+    if (hasYearFilter) {
+      params.append('year_min', String(yearRangeValue[0]));
+      params.append('year_max', String(yearRangeValue[1]));
+    }
+
     setLoading(true);
     setError(null);
+
     const currentJwt = getCookie('jwt');
-    fetch(`${apiBase}/api/albums`, {
-      headers: {
-        'X-API-KEY': apiKey,
-        ...(currentJwt ? { 'Authorization': `Bearer ${currentJwt}` } : {})
+
+    const matchesFilters = (album) => {
+      if (!album) return false;
+      let artistMatches = true;
+      if (artistValue) {
+        const albumArtist = typeof album.artist === 'string' ? album.artist : album.artist?.name;
+        artistMatches = albumArtist === artistValue;
       }
-    })
-      .then(async res => {
-        if (res.status === 403) {
-          setError('Accès interdit (403) : vérifie ta clé API ou ton authentification.');
-          setAlbums([]);
-          setLoading(false);
-          return;
-        }
-        let data;
-        try {
-          data = await res.json();
-        } catch {
-          data = [];
-        }
-        if (!Array.isArray(data)) data = [];
-        setAlbums(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        setError(err.message);
-        setAlbums([]);
-        setLoading(false);
+      let yearMatches = true;
+      if (hasYearFilter) {
+        const albumYear = Number(album.year);
+        yearMatches = Number.isFinite(albumYear) ? albumYear >= yearRangeValue[0] && albumYear <= yearRangeValue[1] : false;
+      }
+      return artistMatches && yearMatches;
+    };
+
+    try {
+      const res = await fetch(`${apiBase}/api/albums?${params.toString()}`, {
+        headers: {
+          'X-API-KEY': apiKey,
+          ...(currentJwt ? { 'Authorization': `Bearer ${currentJwt}` } : {}),
+        },
       });
+
+      if (res.status === 403) {
+        setError('Accès interdit (403) : vérifie ta clé API ou ton authentification.');
+        setAlbums([]);
+        setTotalAlbums(0);
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      let incomingAlbums = Array.isArray(data.albums) ? data.albums : [];
+      let totalFromServer = Number.isFinite(data.total) ? data.total : incomingAlbums.length;
+      const pageFromServer = Number.isFinite(data.page) ? data.page : effectivePage;
+      const pageSizeFromServer = Number.isFinite(data.page_size) ? data.page_size : cappedPageSize;
+
+      if (artistValue || hasYearFilter) {
+        if (!incomingAlbums.length && allAlbums.length) {
+          const filtered = allAlbums.filter(matchesFilters);
+          totalFromServer = filtered.length;
+          const startIndex = (effectivePage - 1) * cappedPageSize;
+          incomingAlbums = filtered.slice(startIndex, startIndex + cappedPageSize);
+        } else {
+          incomingAlbums = incomingAlbums.filter(matchesFilters);
+          if (!Number.isFinite(data.total)) {
+            totalFromServer = incomingAlbums.length;
+          }
+        }
+      }
+
+      setAlbums(incomingAlbums);
+      setPage(Math.max(1, pageFromServer));
+      setPageSize(Math.min(Math.max(pageSizeFromServer, 1), 100));
+      setTotalAlbums(totalFromServer);
+    } catch (err) {
+      setError(err.message || 'Erreur réseau');
+      setAlbums([]);
+      setTotalAlbums(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [allAlbums]);
+
+  const fetchAllAlbums = useCallback(async () => {
+    const apiBase = import.meta.env.VITE_API_URL;
+    const apiKey = import.meta.env.VITE_API_KEY;
+    const currentJwt = getCookie('jwt');
+    const pageSizeMax = 100;
+
+    setAllAlbumsLoading(true);
+    setAllAlbumsError(null);
+
+    try {
+      let pageCursor = 1;
+      let aggregated = [];
+      let totalItems = 0;
+      let totalPages = 1;
+
+      while (pageCursor <= totalPages) {
+        const params = new URLSearchParams({
+          page: String(pageCursor),
+          page_size: String(pageSizeMax),
+        });
+
+        const res = await fetch(`${apiBase}/api/albums?${params.toString()}`, {
+          headers: {
+            'X-API-KEY': apiKey,
+            ...(currentJwt ? { 'Authorization': `Bearer ${currentJwt}` } : {}),
+          },
+        });
+
+        if (res.status === 403) {
+          throw new Error('Accès interdit (403) lors du chargement complet des albums.');
+        }
+
+        if (!res.ok) {
+          const message = await res.text().catch(() => 'Erreur lors du chargement complet des albums.');
+          throw new Error(message || `Erreur ${res.status}`);
+        }
+
+        const data = await res.json().catch(() => ({}));
+        const pageAlbums = Array.isArray(data.albums) ? data.albums : [];
+        aggregated = aggregated.concat(pageAlbums);
+
+        totalItems = Number.isFinite(data.total) ? data.total : aggregated.length;
+        const serverPageSize = Number.isFinite(data.page_size) ? data.page_size : pageSizeMax;
+        totalPages = Math.max(1, Math.ceil(totalItems / serverPageSize));
+
+        if (pageAlbums.length === 0) {
+          break;
+        }
+
+        pageCursor += 1;
+      }
+
+      setAllAlbums(aggregated);
+    } catch (err) {
+      setAllAlbums([]);
+      setAllAlbumsError(err.message || 'Erreur réseau lors du chargement des albums.');
+    } finally {
+      setAllAlbumsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    fetchAlbums();
-  }, [fetchAlbums, jwt]);
+    fetchAlbums(page, pageSize, artistFilter, appliedYearRange);
+  }, [page, pageSize, artistFilter, appliedYearRange, fetchAlbums, jwt]);
+
+  useEffect(() => {
+    fetchAllAlbums();
+  }, [fetchAllAlbums, jwt]);
+
+  const refreshCurrentPage = useCallback(() => {
+    return fetchAlbums(page, pageSize, artistFilter, appliedYearRange);
+  }, [fetchAlbums, page, pageSize, artistFilter, appliedYearRange]);
+
+  const refreshAllData = useCallback(() => {
+    refreshCurrentPage();
+    fetchAllAlbums();
+  }, [refreshCurrentPage, fetchAllAlbums]);
 
   const handleCollectionUpdate = useCallback((albumId, collection) => {
     setAlbums(prev => prev.map(album => (
+      album.id === albumId ? { ...album, collection } : album
+    )));
+    setAllAlbums(prev => prev.map(album => (
       album.id === albumId ? { ...album, collection } : album
     )));
   }, []);
 
   const handleAlbumDelete = useCallback((albumId) => {
     setAlbums(prev => prev.filter(album => album.id !== albumId));
-  }, []);
+    setAllAlbums(prev => prev.filter(album => album.id !== albumId));
+    setTotalAlbums(prev => (prev > 0 ? prev - 1 : 0));
+    refreshCurrentPage();
+  }, [refreshCurrentPage]);
 
   // Mémorisation de la liste des artistes uniques pour le Select
   const uniqueArtists = useMemo(() => {
-    return [...new Set(albums.map(a => a.artist))].sort((a, b) => a.localeCompare(b, 'fr'));
-  }, [albums]);
+    const source = allAlbums.length ? allAlbums : albums;
+    const artistSet = new Set();
+    source.forEach(album => {
+      if (!album) return;
+      const rawArtist = typeof album.artist === 'string' ? album.artist : album.artist?.name;
+      if (rawArtist) {
+        artistSet.add(rawArtist);
+      }
+    });
+    return Array.from(artistSet).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+  }, [allAlbums, albums]);
 
   const filteredArtistOptions = useMemo(() => {
-    if (!artistQuery) return uniqueArtists;
-    const lowered = artistQuery.toLowerCase();
-    return uniqueArtists.filter(artist => artist.toLowerCase().includes(lowered));
+    if (!artistQuery) {
+      return uniqueArtists;
+    }
+    const normalizedQuery = artistQuery.trim().toLowerCase();
+    return uniqueArtists.filter(artistName => artistName.toLowerCase().includes(normalizedQuery));
   }, [artistQuery, uniqueArtists]);
+
+  const availableYears = useMemo(() => {
+    const source = allAlbums.length ? allAlbums : albums;
+    if (!source.length) {
+      return null;
+    }
+
+    let minYear = Infinity;
+    let maxYear = -Infinity;
+    source.forEach(album => {
+      const yearValue = Number(album?.year);
+      if (!Number.isFinite(yearValue)) {
+        return;
+      }
+      if (yearValue < minYear) {
+        minYear = yearValue;
+      }
+      if (yearValue > maxYear) {
+        maxYear = yearValue;
+      }
+    });
+
+    if (!Number.isFinite(minYear) || !Number.isFinite(maxYear)) {
+      return null;
+    }
+
+    return { min: minYear, max: maxYear };
+  }, [allAlbums, albums]);
+
+  useEffect(() => {
+    if (!availableYears) return;
+    setYearRange(prev => {
+      if (prev[0] === null || prev[1] === null) {
+        return [availableYears.min, availableYears.max];
+      }
+      return prev;
+    });
+    setAppliedYearRange(prev => {
+      if (prev[0] === null || prev[1] === null) {
+        return [availableYears.min, availableYears.max];
+      }
+      return prev;
+    });
+  }, [availableYears]);
+
+  const handleArtistSelect = useCallback((artistName) => {
+    setArtistFilter(prev => {
+      if (prev === artistName) {
+        return '';
+      }
+      return artistName;
+    });
+    setPage(1);
+  }, []);
 
   const clearArtistFilter = useCallback(() => {
     setArtistFilter('');
-    setArtistQuery('');
+    setPage(1);
   }, []);
 
-  const handleArtistSelect = useCallback((artist) => {
-    setArtistFilter(prev => (prev === artist ? '' : artist));
-    setArtistQuery('');
+  const handleYearRangeApply = useCallback((range) => {
+    if (!Array.isArray(range) || range.length !== 2) {
+      return;
+    }
+    setAppliedYearRange(range);
+    setPage(1);
   }, []);
 
-  // Mémorisation des années disponibles pour le RangeSlider
-  const availableYears = useMemo(() => {
-    const years = [...new Set(albums.map(a => a.year))].filter(Boolean).map(Number).sort((a, b) => a - b);
-    return years.length > 0 ? { min: years[0], max: years[years.length - 1], all: years } : null;
-  }, [albums]);
+  const handlePageSizeChange = useCallback((value) => {
+    const numericValue = Number(value);
+    const normalized = Number.isFinite(numericValue) ? Math.min(Math.max(numericValue, 1), 100) : 20;
+    setPageSize(normalized);
+    setPage(1);
+  }, []);
 
-  // Mémorisation des albums filtrés
-  const filteredAlbums = useMemo(() => {
-    return albums.filter(album => {
-      const matchesArtist = !artistFilter || album.artist === artistFilter;
-      const matchesYear = yearRange[0] === null || yearRange[1] === null || 
-        (album.year >= yearRange[0] && album.year <= yearRange[1]);
-      return matchesArtist && matchesYear;
+  const totalPages = useMemo(() => {
+    if (!totalAlbums) return 1;
+    const pages = Math.ceil(totalAlbums / pageSize);
+    return pages > 0 ? pages : 1;
+  }, [totalAlbums, pageSize]);
+
+  useEffect(() => {
+    setPage(prev => {
+      if (prev > totalPages) {
+        return totalPages;
+      }
+      if (prev < 1) {
+        return 1;
+      }
+      return prev;
     });
-  }, [albums, artistFilter, yearRange]);
+  }, [totalPages]);
+
+  const goToFirstPage = useCallback(() => {
+    setPage(1);
+  }, []);
+
+  const goToPrevPage = useCallback(() => {
+    setPage(prev => Math.max(1, prev - 1));
+  }, []);
+
+  const goToNextPage = useCallback(() => {
+    setPage(prev => Math.min(totalPages, prev + 1));
+  }, [totalPages]);
+
+  const goToLastPage = useCallback(() => {
+    setPage(totalPages);
+  }, [totalPages]);
+
+  const canGoPrev = page > 1;
+  const canGoNext = page < totalPages;
 
   return (
     <>
@@ -385,10 +631,10 @@ function App() {
         <StudioStats />
       ) : showCollection && isUser ? (
         <CollectionExplorer
-          albums={albums}
-          loading={loading}
-          error={error}
-          onRefresh={fetchAlbums}
+          albums={allAlbums}
+          loading={allAlbumsLoading}
+          error={allAlbumsError}
+          onRefresh={refreshAllData}
           isUser={isUser}
         />
       ) : (
@@ -433,6 +679,7 @@ function App() {
           {loading && <Spinner size="xl" mt={8} />}
           {error && <Text color="red.500">Erreur : {error}</Text>}
           {!loading && !error && (
+            <>
             <Box display="flex" flexDirection={{ base: 'column', md: 'row' }} gap={8}>
               {/* Sidebar des filtres à gauche */}
               <Box w={{ base: '100%', md: '320px' }} mb={{ base: 8, md: 0 }}>
@@ -519,6 +766,7 @@ function App() {
                         step={1}
                         value={[minSelected, maxSelected]}
                         onChange={val => setYearRange(val)}
+                        onChangeEnd={handleYearRangeApply}
                         colorScheme="purple"
                       >
                         <RangeSliderTrack>
@@ -527,7 +775,18 @@ function App() {
                         <RangeSliderThumb index={0} />
                         <RangeSliderThumb index={1} />
                       </RangeSlider>
-                      <Button mt={1} size="xs" variant="ghost" colorScheme="gray" onClick={() => setYearRange([availableYears.min, availableYears.max])}>Toutes les années</Button>
+                      <Button
+                        mt={1}
+                        size="xs"
+                        variant="ghost"
+                        colorScheme="gray"
+                        onClick={() => {
+                          setYearRange([availableYears.min, availableYears.max]);
+                          handleYearRangeApply([availableYears.min, availableYears.max]);
+                        }}
+                      >
+                        Toutes les années
+                      </Button>
                     </Box>
                   );
                 })()}
@@ -550,37 +809,135 @@ function App() {
               </Box>
               {/* Grille d'albums à droite */}
               <Box flex={1}>
-                <SimpleGrid columns={albumsPerRow} spacing={2} mt={2}>
-                  {filteredAlbums.map((album, index) => (
-                    <AlbumCard
-                      key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
-                      album={album}
-                      index={index}
-                      colorMode={colorMode}
-                      isUser={isUser}
-                      onClick={() => {
-                        setSelectedAlbumId(album.id);
-                        openDetails();
-                      }}
-                    />
-                  ))}
-                </SimpleGrid>
-  {/* Fenêtre modale de détails d'album */}
-      <AlbumDetailsModal
-        albumId={selectedAlbumId}
-        isOpen={isDetailsOpen}
-        onClose={() => {
-          setSelectedAlbumId(null);
-          closeDetails();
-        }}
-        isContributor={isContributor}
-        isUser={isUser}
-        refreshAlbums={fetchAlbums}
-        onCollectionUpdate={handleCollectionUpdate}
-        onAlbumDelete={handleAlbumDelete}
-      />
+                <Box display="flex" flexDirection="column" gap={4}>
+                  <Box
+                    borderWidth={1}
+                    borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                    borderRadius="lg"
+                    bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                    boxShadow="sm"
+                    p={{ base: 3, md: 4 }}
+                  >
+                    <Flex
+                      direction={{ base: 'column', md: 'row' }}
+                      align={{ base: 'flex-start', md: 'center' }}
+                      justify="space-between"
+                      gap={3}
+                      wrap="wrap"
+                    >
+                      <Flex align="center" gap={3} wrap="wrap">
+                        <Text fontWeight="bold" fontSize="lg" color={colorMode === 'dark' ? 'gray.100' : 'brand.800'}>
+                          {totalAlbums.toLocaleString('fr-FR')} album{totalAlbums > 1 ? 's' : ''}
+                        </Text>
+                        <Badge colorScheme="purple" variant="subtle" borderRadius="md" px={2} py={0.5} fontSize="0.75rem">
+                          Page {page} / {totalPages}
+                        </Badge>
+                      </Flex>
+                      <Flex align="center" gap={2} wrap="wrap">
+                        <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>
+                          Albums par page
+                        </Text>
+                        <Select
+                          size="sm"
+                          value={pageSize}
+                          onChange={event => handlePageSizeChange(event.target.value)}
+                          maxW="100px"
+                          variant="filled"
+                          focusBorderColor="purple.400"
+                          bg={colorMode === 'dark' ? 'brand.700' : 'gray.50'}
+                          borderColor={colorMode === 'dark' ? 'brand.600' : 'gray.200'}
+                          color={colorMode === 'dark' ? 'gray.100' : 'brand.900'}
+                        >
+                          {[20, 40, 60, 100].map(optionValue => (
+                            <option key={optionValue} value={optionValue}>{optionValue}</option>
+                          ))}
+                        </Select>
+                      </Flex>
+                    </Flex>
+
+                    <Flex
+                      mt={{ base: 3, md: 4 }}
+                      direction={{ base: 'column', sm: 'row' }}
+                      align={{ base: 'stretch', sm: 'center' }}
+                      justify="space-between"
+                      gap={3}
+                    >
+                      <ButtonGroup size="sm" isAttached variant="outline" colorScheme="purple">
+                        <Button
+                          onClick={goToFirstPage}
+                          isDisabled={!canGoPrev}
+                          leftIcon={<ArrowLeftIcon />}
+                        >
+                          Première
+                        </Button>
+                        <Button
+                          onClick={goToPrevPage}
+                          isDisabled={!canGoPrev}
+                          leftIcon={<ChevronLeftIcon />}
+                        >
+                          Précédent
+                        </Button>
+                        <Button
+                          onClick={goToNextPage}
+                          isDisabled={!canGoNext}
+                          rightIcon={<ChevronRightIcon />}
+                          variant="solid"
+                        >
+                          Suivant
+                        </Button>
+                        <Button
+                          onClick={goToLastPage}
+                          isDisabled={!canGoNext}
+                          rightIcon={<ArrowRightIcon />}
+                        >
+                          Dernière
+                        </Button>
+                      </ButtonGroup>
+                      <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'} textAlign={{ base: 'center', sm: 'right' }}>
+                        {albums.length} affiché{albums.length > 1 ? 's' : ''} sur cette page
+                      </Text>
+                    </Flex>
+                  </Box>
+
+                  {albums.length === 0 ? (
+                    <Text fontStyle="italic" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                      Aucun album trouvé pour ces critères.
+                    </Text>
+                  ) : (
+                    <SimpleGrid columns={albumsPerRow} spacing={2} mt={2}>
+                      {albums.map((album, index) => (
+                        <AlbumCard
+                          key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
+                          album={album}
+                          index={index}
+                          colorMode={colorMode}
+                          isUser={isUser}
+                          onClick={() => {
+                            setSelectedAlbumId(album.id);
+                            openDetails();
+                          }}
+                        />
+                      ))}
+                    </SimpleGrid>
+                  )}
+                </Box>
               </Box>
             </Box>
+            {/* Fenêtre modale de détails d'album */}
+            <AlbumDetailsModal
+              albumId={selectedAlbumId}
+              isOpen={isDetailsOpen}
+              onClose={() => {
+                setSelectedAlbumId(null);
+                closeDetails();
+              }}
+              isContributor={isContributor}
+              isUser={isUser}
+              refreshAlbums={refreshCurrentPage}
+              onCollectionUpdate={handleCollectionUpdate}
+              onAlbumDelete={handleAlbumDelete}
+            />
+            </>
           )}
         </Box>
       )}
