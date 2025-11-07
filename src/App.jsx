@@ -187,6 +187,7 @@ function App() {
   const [artistQuery, setArtistQuery] = useState('');
   const [yearRange, setYearRange] = useState([null, null]);
   const [appliedYearRange, setAppliedYearRange] = useState([null, null]);
+  const [hasCustomYearRange, setHasCustomYearRange] = useState(false);
   const { colorMode, toggleColorMode } = useColorMode();
   const [albums, setAlbums] = useState([])
   const [albumsPerRow, setAlbumsPerRow] = useState(5)
@@ -438,19 +439,44 @@ function App() {
 
   useEffect(() => {
     if (!availableYears) return;
-    setYearRange(prev => {
-      if (prev[0] === null || prev[1] === null) {
-        return [availableYears.min, availableYears.max];
+    const fullRange = [availableYears.min, availableYears.max];
+
+    const clampRange = (range) => {
+      if (!Array.isArray(range) || range[0] === null || range[1] === null) {
+        return fullRange;
       }
-      return prev;
-    });
-    setAppliedYearRange(prev => {
-      if (prev[0] === null || prev[1] === null) {
-        return [availableYears.min, availableYears.max];
+      const [minLimit, maxLimit] = fullRange;
+      let nextMin = Math.max(minLimit, Math.min(range[0], maxLimit));
+      let nextMax = Math.max(minLimit, Math.min(range[1], maxLimit));
+      if (nextMin > nextMax) {
+        nextMin = minLimit;
+        nextMax = maxLimit;
       }
-      return prev;
-    });
-  }, [availableYears]);
+      if (nextMin === range[0] && nextMax === range[1]) {
+        return range;
+      }
+      return [nextMin, nextMax];
+    };
+
+    if (!hasCustomYearRange) {
+      setYearRange(prev => {
+        if (Array.isArray(prev) && prev[0] === fullRange[0] && prev[1] === fullRange[1]) {
+          return prev;
+        }
+        return fullRange;
+      });
+      setAppliedYearRange(prev => {
+        if (Array.isArray(prev) && prev[0] === fullRange[0] && prev[1] === fullRange[1]) {
+          return prev;
+        }
+        return fullRange;
+      });
+      return;
+    }
+
+    setYearRange(prev => clampRange(prev));
+    setAppliedYearRange(prev => clampRange(prev));
+  }, [availableYears, hasCustomYearRange]);
 
   const handleArtistSelect = useCallback((artistName) => {
     setArtistFilter(prev => {
@@ -473,7 +499,13 @@ function App() {
     }
     setAppliedYearRange(range);
     setPage(1);
-  }, []);
+    if (availableYears) {
+      const isDefaultRange = range[0] === availableYears.min && range[1] === availableYears.max;
+      setHasCustomYearRange(!isDefaultRange);
+    } else {
+      setHasCustomYearRange(true);
+    }
+  }, [availableYears]);
 
   const handlePageSizeChange = useCallback((value) => {
     const numericValue = Number(value);
@@ -781,8 +813,10 @@ function App() {
                         variant="ghost"
                         colorScheme="gray"
                         onClick={() => {
-                          setYearRange([availableYears.min, availableYears.max]);
-                          handleYearRangeApply([availableYears.min, availableYears.max]);
+                          const defaultRange = [availableYears.min, availableYears.max];
+                          setYearRange(defaultRange);
+                          handleYearRangeApply(defaultRange);
+                          setHasCustomYearRange(false);
                         }}
                       >
                         Toutes les années
