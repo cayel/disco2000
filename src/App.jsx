@@ -1,7 +1,7 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge } from '@chakra-ui/react'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText } from '@chakra-ui/react'
 import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
@@ -192,6 +192,9 @@ function App() {
   const [albums, setAlbums] = useState([])
   const [albumsPerRow, setAlbumsPerRow] = useState(5)
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
+  // Gestion du chargement initial et des rafraîchissements partiels (pagination / filtres)
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  const [albumsLoading, setAlbumsLoading] = useState(false);
   // Détermination des rôles
   const isContributor = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('contributeur');
   const isUser = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('utilisateur');
@@ -224,7 +227,12 @@ function App() {
       params.append('year_max', String(yearRangeValue[1]));
     }
 
-    setLoading(true);
+    // Ne bloquer la page entière que pendant le premier chargement.
+    if (!initialLoaded) {
+      setLoading(true);
+    } else {
+      setAlbumsLoading(true);
+    }
     setError(null);
 
     const currentJwt = getCookie('jwt');
@@ -289,9 +297,14 @@ function App() {
       setAlbums([]);
       setTotalAlbums(0);
     } finally {
-      setLoading(false);
+      if (!initialLoaded) {
+        setLoading(false);
+        setInitialLoaded(true);
+      } else {
+        setAlbumsLoading(false);
+      }
     }
-  }, [allAlbums]);
+  }, [allAlbums, initialLoaded]);
 
   const fetchAllAlbums = useCallback(async () => {
     const apiBase = import.meta.env.VITE_API_URL;
@@ -851,6 +864,11 @@ function App() {
                     bg={colorMode === 'dark' ? 'brand.800' : 'white'}
                     boxShadow="sm"
                     p={{ base: 3, md: 4 }}
+                    // Hauteur minimale pour éviter le "saut" visuel quand aucun album n'est affiché
+                    minH={{ base: '132px', md: '110px' }}
+                    display="flex"
+                    flexDirection="column"
+                    justifyContent="space-between"
                   >
                     <Flex
                       direction={{ base: 'column', md: 'row' }}
@@ -933,27 +951,85 @@ function App() {
                     </Flex>
                   </Box>
 
-                  {albums.length === 0 ? (
-                    <Text fontStyle="italic" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
-                      Aucun album trouvé pour ces critères.
-                    </Text>
-                  ) : (
-                    <SimpleGrid columns={albumsPerRow} spacing={2} mt={2}>
-                      {albums.map((album, index) => (
-                        <AlbumCard
-                          key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
-                          album={album}
-                          index={index}
-                          colorMode={colorMode}
-                          isUser={isUser}
-                          onClick={() => {
-                            setSelectedAlbumId(album.id);
-                            openDetails();
-                          }}
-                        />
-                      ))}
+                  <Box position="relative">
+                    {albumsLoading && (
+                      <Flex
+                        position="absolute"
+                        inset={0}
+                        align="center"
+                        justify="center"
+                        bg={colorMode === 'dark' ? 'rgba(10,10,25,0.6)' : 'rgba(255,255,255,0.6)'}
+                        backdropFilter="blur(2px)"
+                        zIndex={5}
+                        borderRadius="md"
+                      >
+                        <Spinner size="lg" thickness="4px" speed="0.6s" color="purple.400" />
+                      </Flex>
+                    )}
+                    <SimpleGrid columns={albumsPerRow} spacing={2} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px">
+                      {albums.length === 0 ? (
+                        [...Array(albumsPerRow)].map((_, i) => (
+                          <Flex
+                            key={`empty-skel-${i}`}
+                            direction="column"
+                            align="center"
+                            justify="flex-start"
+                            p={2}
+                            borderWidth={1}
+                            borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                            borderStyle="dashed"
+                            borderRadius="md"
+                            bg={colorMode === 'dark' ? 'brand.900' : 'white'}
+                            minH="240px"
+                          >
+                            <Skeleton w="100%" h="140px" borderRadius="md" startColor={colorMode === 'dark' ? 'purple.900' : 'purple.50'} endColor={colorMode === 'dark' ? 'purple.700' : 'purple.100'} />
+                            <SkeletonText mt={3} noOfLines={2} spacing={2} skeletonHeight={3} w="90%" />
+                            {i === 0 && (
+                              <Flex direction="column" align="center" mt={3} gap={2}>
+                                <Text fontSize="sm" fontWeight="bold" color={colorMode === 'dark' ? 'gray.100' : 'brand.700'}>
+                                  Aucun résultat
+                                </Text>
+                                <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} textAlign="center" px={2}>
+                                  Ajuste les filtres ou réinitialise pour revoir la liste complète.
+                                </Text>
+                                {(artistFilter || (appliedYearRange[0] !== null && appliedYearRange[1] !== null)) && (
+                                  <Button
+                                    size="xs"
+                                    colorScheme="purple"
+                                    variant="outline"
+                                    onClick={() => {
+                                      clearArtistFilter();
+                                      if (availableYears) {
+                                        const defaultRange = [availableYears.min, availableYears.max];
+                                        setYearRange(defaultRange);
+                                        handleYearRangeApply(defaultRange);
+                                      }
+                                    }}
+                                  >
+                                    Réinitialiser
+                                  </Button>
+                                )}
+                              </Flex>
+                            )}
+                          </Flex>
+                        ))
+                      ) : (
+                        albums.map((album, index) => (
+                          <AlbumCard
+                            key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
+                            album={album}
+                            index={index}
+                            colorMode={colorMode}
+                            isUser={isUser}
+                            onClick={() => {
+                              setSelectedAlbumId(album.id);
+                              openDetails();
+                            }}
+                          />
+                        ))
+                      )}
                     </SimpleGrid>
-                  )}
+                  </Box>
                 </Box>
               </Box>
             </Box>
