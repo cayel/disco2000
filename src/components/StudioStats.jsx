@@ -28,8 +28,8 @@ export default function StudioStats() {
   const jwt = getCookie('jwt');
   const jwtPayload = decodeJwt(jwt);
   const isUser = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('utilisateur');
-  const [albums, setAlbums] = useState([]);
-  const [stats, setStats] = useState(null);
+  // Suppression de l'ancien chargement complet des albums : on ne conserve que les stats agrégées.
+  const [publicStats, setPublicStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { colorMode } = useColorMode();
@@ -42,91 +42,45 @@ export default function StudioStats() {
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL;
     const apiKey = import.meta.env.VITE_API_KEY;
-    fetch(`${apiBase}/api/albums`, {
+    const url = `${apiBase}/api/albums/stats`;
+    fetch(url, {
       headers: {
-        'X-API-KEY': apiKey
-      }
+        'X-API-KEY': apiKey,
+      },
     })
       .then(res => {
-        if (!res.ok) throw new Error('Erreur API');
+        if (!res.ok) throw new Error(`Erreur API (${res.status})`);
         return res.json();
       })
       .then(data => {
-        const albumsArray = Array.isArray(data) ? data : [];
-        setAlbums(albumsArray);
-        const artistSet = new Set();
-        const yearCount = {};
-        const artistCount = {};
-        const decadeCount = {};
-        let minYear = Infinity;
-        let maxYear = -Infinity;
-
-        albumsArray.forEach(album => {
-          const artist = album.artist || album.artiste;
-          if (artist) {
-            artistCount[artist] = (artistCount[artist] || 0) + 1;
-            artistSet.add(artist);
-          }
-          const parsedYear = Number.parseInt(album.year, 10);
-          if (!Number.isFinite(parsedYear)) return;
-          yearCount[parsedYear] = (yearCount[parsedYear] || 0) + 1;
-          minYear = Math.min(minYear, parsedYear);
-          maxYear = Math.max(maxYear, parsedYear);
-          const decade = `${Math.floor(parsedYear / 10) * 10}s`;
-          decadeCount[decade] = (decadeCount[decade] || 0) + 1;
-        });
-
-        const [topYearEntryYear, topYearEntryCount] = Object.entries(yearCount)
-          .sort((a, b) => b[1] - a[1])
-          .at(0) || [null, 0];
-
-        const [topArtistEntryArtist, topArtistEntryCount] = Object.entries(artistCount)
-          .sort((a, b) => b[1] - a[1])
-          .at(0) || [null, 0];
-
-        const decadeBreakdown = Object.entries(decadeCount)
-          .map(([decade, countValue]) => ({ decade, count: countValue }))
-          .sort((a, b) => b.count - a.count);
-
-        setStats({
-          totalAlbums: albumsArray.length,
-          uniqueArtists: artistSet.size,
-          topYear: topYearEntryYear,
-          topYearCount: topYearEntryCount,
-          topArtist: topArtistEntryArtist,
-          topArtistCount: topArtistEntryCount,
-          yearRange: {
-            min: Number.isFinite(minYear) ? minYear : null,
-            max: Number.isFinite(maxYear) ? maxYear : null,
-          },
-          decadeBreakdown,
-        });
+        // On stocke directement la réponse conforme à l'exemple fourni
+        setPublicStats(data);
         setLoading(false);
       })
       .catch(err => {
-        setError(err.message);
+        setError(err.message || 'Erreur de récupération des statistiques publiques');
         setLoading(false);
       });
   }, []);
 
-  const decadeDistribution = useMemo(() => {
-    if (!stats?.decadeBreakdown?.length) return [];
-    const total = stats.decadeBreakdown.reduce((sum, entry) => sum + entry.count, 0) || 1;
-    return stats.decadeBreakdown
-      .slice(0, 5)
-      .map((entry, index) => ({
-        ...entry,
-        percent: Math.round((entry.count / total) * 100),
-        colorScheme: index === 0 ? 'purple' : index === 1 ? 'pink' : 'gray',
-      }));
-  }, [stats]);
+  const yearDistribution = useMemo(() => {
+    if (!publicStats?.albums_per_year?.length) return [];
+    const sorted = [...publicStats.albums_per_year].sort((a, b) => a.year - b.year);
+    return sorted;
+  }, [publicStats]);
 
+  const minYear = useMemo(() => {
+    if (!yearDistribution.length) return null;
+    return yearDistribution[0].year;
+  }, [yearDistribution]);
+  const maxYear = useMemo(() => {
+    if (!yearDistribution.length) return null;
+    return yearDistribution[yearDistribution.length - 1].year;
+  }, [yearDistribution]);
   const yearSpan = useMemo(() => {
-    const minYear = stats?.yearRange?.min;
-    const maxYear = stats?.yearRange?.max;
     if (!minYear || !maxYear) return null;
     return maxYear - minYear + 1;
-  }, [stats]);
+  }, [minYear, maxYear]);
 
   return (
     <Box
@@ -165,7 +119,7 @@ export default function StudioStats() {
                 </Flex>
               ) : error ? (
                 <Text color="red.400">{error}</Text>
-              ) : stats ? (
+              ) : publicStats ? (
                 <Stack spacing={8}>
                   <Box
                     bgGradient={highlightGradient}
@@ -183,10 +137,10 @@ export default function StudioStats() {
                           Nombre total d'albums
                         </StatLabel>
                         <StatNumber fontSize={{ base: '4xl', md: '5xl' }} fontWeight="extrabold">
-                          {stats.totalAlbums}
+                          {publicStats.total_albums ?? '—'}
                         </StatNumber>
                         <StatHelpText color="whiteAlpha.900">
-                          {stats.uniqueArtists} artiste{stats.uniqueArtists > 1 ? 's' : ''} recensé{stats.uniqueArtists > 1 ? 's' : ''}
+                          {publicStats.total_artists ?? 0} artiste{publicStats.total_artists > 1 ? 's' : ''} recensé{publicStats.total_artists > 1 ? 's' : ''}
                         </StatHelpText>
                       </Stat>
                       <Box>
@@ -194,35 +148,28 @@ export default function StudioStats() {
                           Période couverte
                         </Text>
                         <Heading size="lg" mb={2}>
-                          {stats.yearRange?.min ?? '—'} – {stats.yearRange?.max ?? '—'}
+                          {minYear ?? '—'} – {maxYear ?? '—'}
                         </Heading>
                         {yearSpan && (
                           <Text color="whiteAlpha.900" mb={2}>
                             {yearSpan} année{yearSpan > 1 ? 's' : ''} d'archives musicales
                           </Text>
                         )}
-                        {stats.decadeBreakdown?.length ? (
-                          <Text color="whiteAlpha.900">
-                            Décennie phare : <strong>{stats.decadeBreakdown[0].decade}</strong> ({stats.decadeBreakdown[0].count} album{stats.decadeBreakdown[0].count > 1 ? 's' : ''})
-                          </Text>
-                        ) : (
-                          <Text color="whiteAlpha.900">
-                            Ajoute plus d'albums pour enrichir la chronologie.
-                          </Text>
-                        )}
+                        <Text color="whiteAlpha.900">
+                          Meilleure année : <strong>{publicStats.top_year ?? '—'}</strong> ({publicStats.top_year_count ?? 0} album{(publicStats.top_year_count ?? 0) > 1 ? 's' : ''})
+                        </Text>
                       </Box>
                     </SimpleGrid>
                   </Box>
-
                   <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
                     <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
                       <StatLabel fontSize="lg">Année la plus représentée</StatLabel>
                       <StatNumber fontSize="3xl" color={colorMode === 'dark' ? 'teal.200' : 'teal.600'}>
-                        {stats.topYear ?? 'N/A'}
+                        {publicStats.top_year ?? 'N/A'}
                       </StatNumber>
-                      {stats.topYearCount ? (
+                      {publicStats.top_year_count ? (
                         <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
-                          {stats.topYearCount} album{stats.topYearCount > 1 ? 's' : ''} publié{stats.topYearCount > 1 ? 's' : ''}
+                          {publicStats.top_year_count} album{publicStats.top_year_count > 1 ? 's' : ''} publié{publicStats.top_year_count > 1 ? 's' : ''}
                         </StatHelpText>
                       ) : null}
                     </Stat>
@@ -230,56 +177,27 @@ export default function StudioStats() {
                     <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
                       <StatLabel fontSize="lg">Artiste le plus représenté</StatLabel>
                       <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'cyan.200' : 'purple.700'}>
-                        {stats.topArtist ?? 'N/A'}
+                        {publicStats.top_artist ?? 'N/A'}
                       </StatNumber>
-                      {stats.topArtistCount ? (
+                      {publicStats.top_artist_count ? (
                         <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
-                          {stats.topArtistCount} album{stats.topArtistCount > 1 ? 's' : ''}
+                          {publicStats.top_artist_count} album{publicStats.top_artist_count > 1 ? 's' : ''}
                         </StatHelpText>
                       ) : null}
                     </Stat>
 
                     <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
-                      <StatLabel fontSize="lg">Richesse temporelle</StatLabel>
+                      <StatLabel fontSize="lg">Totaux</StatLabel>
                       <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'pink.200' : 'pink.500'}>
-                        {stats.decadeBreakdown?.length ? `${stats.decadeBreakdown.length} décennie${stats.decadeBreakdown.length > 1 ? 's' : ''}` : 'N/A'}
+                        {publicStats.total_albums ?? 0} / {publicStats.total_artists ?? 0}
                       </StatNumber>
-                      {stats.decadeBreakdown?.length ? (
-                        <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
-                          Top : {stats.decadeBreakdown[0].decade}
-                        </StatHelpText>
-                      ) : (
-                        <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
-                          Ajoute des albums pour varier les périodes
-                        </StatHelpText>
-                      )}
+                      <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
+                        Albums / Artistes distincts
+                      </StatHelpText>
                     </Stat>
                   </SimpleGrid>
-
-                  {decadeDistribution.length > 0 && (
-                    <Box p={{ base: 6, md: 6 }} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
-                      <Heading as="h3" size="md" mb={1} color={colorMode === 'dark' ? 'purple.200' : 'purple.700'}>
-                        Répartition par décennie
-                      </Heading>
-                      <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'} mb={4}>
-                        Les périodes qui dominent actuellement le catalogue.
-                      </Text>
-                      <Stack spacing={3}>
-                        {decadeDistribution.map(({ decade, count, percent, colorScheme }) => (
-                          <Box key={decade}>
-                            <Flex justify="space-between" mb={1} fontSize="sm">
-                              <Text>{decade}</Text>
-                              <Text fontWeight="semibold">{count} ({percent}%)</Text>
-                            </Flex>
-                            <Progress value={percent} colorScheme={colorScheme} size="sm" borderRadius="full" />
-                          </Box>
-                        ))}
-                      </Stack>
-                    </Box>
-                  )}
-
                   <Box p={{ base: 0, md: 0 }}>
-                    <AlbumsPerYearChart albums={albums} />
+                    <AlbumsPerYearChart yearData={publicStats.albums_per_year || []} />
                   </Box>
                 </Stack>
               ) : (
