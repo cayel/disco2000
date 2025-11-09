@@ -15,6 +15,7 @@ import {
   Progress,
 } from '@chakra-ui/react';
 import { getCookie } from '../utils/cookie';
+import authFetch from '../utils/authFetch';
 
 export default function CollectionStats() {
   const [stats, setStats] = useState(null);
@@ -29,19 +30,13 @@ export default function CollectionStats() {
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL;
-    const apiKey = import.meta.env.VITE_API_KEY;
     const jwt = getCookie('jwt');
     if (!jwt) {
-      setError("Non authentifié");
+      setError('Non authentifié');
       setLoading(false);
       return;
     }
-    fetch(`${apiBase}/api/collection/stats`, {
-      headers: {
-        'X-API-KEY': apiKey,
-        'Authorization': `Bearer ${jwt}`
-      }
-    })
+    authFetch(`${apiBase}/api/collection/stats`, { method: 'GET' }, { label: 'collection-stats' })
       .then(res => {
         if (!res.ok) throw new Error('Erreur API');
         return res.json();

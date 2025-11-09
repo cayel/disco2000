@@ -23,6 +23,7 @@ import {
 } from '@chakra-ui/react';
 import CollectionStats from './CollectionStats';
 import AlbumsPerYearChart from './AlbumsPerYearChart';
+import authFetch from '../utils/authFetch';
 
 export default function StudioStats() {
   const jwt = getCookie('jwt');
@@ -41,19 +42,13 @@ export default function StudioStats() {
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL;
-    const apiKey = import.meta.env.VITE_API_KEY;
     const url = `${apiBase}/api/albums/stats`;
-    fetch(url, {
-      headers: {
-        'X-API-KEY': apiKey,
-      },
-    })
+    authFetch(url, { method: 'GET' }, { label: 'public-stats' })
       .then(res => {
         if (!res.ok) throw new Error(`Erreur API (${res.status})`);
         return res.json();
       })
       .then(data => {
-        // On stocke directement la réponse conforme à l'exemple fourni
         setPublicStats(data);
         setLoading(false);
       })

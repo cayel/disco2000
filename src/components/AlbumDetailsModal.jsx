@@ -3,6 +3,7 @@ import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, Modal
 
 import { getCookie, deleteCookie } from '../utils/cookie';
 import { isJwtExpired } from '../utils/jwt';
+import authFetch from '../utils/authFetch';
 
 export default function AlbumDetailsModal({
   albumId,
@@ -50,15 +51,13 @@ export default function AlbumDetailsModal({
     };
     const isRemoving = !payload.cd && !payload.vinyl;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/collection`, {
+      const res = await authFetch(`${import.meta.env.VITE_API_URL}/api/collection`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-API-KEY': import.meta.env.VITE_API_KEY,
-          ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
-      });
+      }, { label: 'save-collection' });
       if (!res.ok) {
         const errorText = await res.text().catch(() => '');
         throw new Error(errorText || 'Erreur API');
@@ -86,12 +85,9 @@ export default function AlbumDetailsModal({
     setLoading(true);
     setError(null);
     setAlbum(null);
-    fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
-      headers: {
-        'X-API-KEY': import.meta.env.VITE_API_KEY,
-        ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-      }
-    })
+    authFetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
+      method: 'GET'
+    }, { label: 'album-details' })
       .then(async (res) => {
         if (!res.ok) throw new Error('Erreur lors du chargement');
         const data = await res.json();
@@ -105,13 +101,9 @@ export default function AlbumDetailsModal({
     if (!albumId || !jwt || !isContributor) return;
     setDeleting(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
-        method: 'DELETE',
-        headers: {
-          'X-API-KEY': import.meta.env.VITE_API_KEY,
-          ...(jwt ? { 'Authorization': `Bearer ${jwt}` } : {})
-        }
-      });
+      const res = await authFetch(`${import.meta.env.VITE_API_URL}/api/albums/${albumId}`, {
+        method: 'DELETE'
+      }, { label: 'delete-album' });
       if (res.ok) {
         toast({ title: 'Album supprimé', status: 'success', duration: 2000 });
         if (onAlbumDelete) {

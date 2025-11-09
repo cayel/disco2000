@@ -1,4 +1,5 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
+import authFetch from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText } from '@chakra-ui/react'
@@ -209,7 +210,6 @@ function App() {
 
   const fetchAlbums = useCallback(async (pageValue, pageSizeValue, artistValue, yearRangeValue) => {
     const apiBase = import.meta.env.VITE_API_URL;
-    const apiKey = import.meta.env.VITE_API_KEY;
     const effectivePage = Number(pageValue) > 0 ? Number(pageValue) : 1;
     const effectivePageSize = Number(pageSizeValue) > 0 ? Number(pageSizeValue) : 20;
     const cappedPageSize = Math.min(Math.max(effectivePageSize, 1), 100);
@@ -223,8 +223,8 @@ function App() {
       params.append('artist', artistValue);
     }
     if (hasYearFilter) {
-      params.append('year_min', String(yearRangeValue[0]));
-      params.append('year_max', String(yearRangeValue[1]));
+      params.append('year_from', String(yearRangeValue[0]));
+      params.append('year_to', String(yearRangeValue[1]));
     }
 
     // Ne bloquer la page entière que pendant le premier chargement.
@@ -235,30 +235,11 @@ function App() {
     }
     setError(null);
 
-    const currentJwt = getCookie('jwt');
-
-    const matchesFilters = (album) => {
-      if (!album) return false;
-      let artistMatches = true;
-      if (artistValue) {
-        const albumArtist = typeof album.artist === 'string' ? album.artist : album.artist?.name;
-        artistMatches = albumArtist === artistValue;
-      }
-      let yearMatches = true;
-      if (hasYearFilter) {
-        const albumYear = Number(album.year);
-        yearMatches = Number.isFinite(albumYear) ? albumYear >= yearRangeValue[0] && albumYear <= yearRangeValue[1] : false;
-      }
-      return artistMatches && yearMatches;
-    };
+  // authFetch gère automatiquement le JWT + refresh
+    // L'API gère maintenant nativement les filtres artiste et années
 
     try {
-      const res = await fetch(`${apiBase}/api/albums?${params.toString()}`, {
-        headers: {
-          'X-API-KEY': apiKey,
-          ...(currentJwt ? { 'Authorization': `Bearer ${currentJwt}` } : {}),
-        },
-      });
+      const res = await authFetch(`${apiBase}/api/albums?${params.toString()}`, { method: 'GET' }, { label: 'fetch-albums' });
 
       if (res.status === 403) {
         setError('Accès interdit (403) : vérifie ta clé API ou ton authentification.');
@@ -269,24 +250,10 @@ function App() {
       }
 
       const data = await res.json().catch(() => ({}));
-      let incomingAlbums = Array.isArray(data.albums) ? data.albums : [];
-      let totalFromServer = Number.isFinite(data.total) ? data.total : incomingAlbums.length;
+      const incomingAlbums = Array.isArray(data.albums) ? data.albums : [];
+      const totalFromServer = Number.isFinite(data.total) ? data.total : incomingAlbums.length;
       const pageFromServer = Number.isFinite(data.page) ? data.page : effectivePage;
       const pageSizeFromServer = Number.isFinite(data.page_size) ? data.page_size : cappedPageSize;
-
-      if (artistValue || hasYearFilter) {
-        if (!incomingAlbums.length && allAlbums.length) {
-          const filtered = allAlbums.filter(matchesFilters);
-          totalFromServer = filtered.length;
-          const startIndex = (effectivePage - 1) * cappedPageSize;
-          incomingAlbums = filtered.slice(startIndex, startIndex + cappedPageSize);
-        } else {
-          incomingAlbums = incomingAlbums.filter(matchesFilters);
-          if (!Number.isFinite(data.total)) {
-            totalFromServer = incomingAlbums.length;
-          }
-        }
-      }
 
       setAlbums(incomingAlbums);
       setPage(Math.max(1, pageFromServer));
@@ -308,8 +275,6 @@ function App() {
 
   const fetchAllAlbums = useCallback(async () => {
     const apiBase = import.meta.env.VITE_API_URL;
-    const apiKey = import.meta.env.VITE_API_KEY;
-    const currentJwt = getCookie('jwt');
     const pageSizeMax = 100;
 
     setAllAlbumsLoading(true);
@@ -327,12 +292,7 @@ function App() {
           page_size: String(pageSizeMax),
         });
 
-        const res = await fetch(`${apiBase}/api/albums?${params.toString()}`, {
-          headers: {
-            'X-API-KEY': apiKey,
-            ...(currentJwt ? { 'Authorization': `Bearer ${currentJwt}` } : {}),
-          },
-        });
+        const res = await authFetch(`${apiBase}/api/albums?${params.toString()}`, { method: 'GET' }, { label: 'fetch-all-albums' });
 
         if (res.status === 403) {
           throw new Error('Accès interdit (403) lors du chargement complet des albums.');

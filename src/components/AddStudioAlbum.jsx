@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Box, Button, Input, FormControl, FormLabel, useToast, useColorMode, Flex, Icon, Text, Switch } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { getCookie } from '../utils/cookie';
+import authFetch from '../utils/authFetch';
 
 export default function AddStudioAlbum() {
   const [id, setId] = useState('');
@@ -19,16 +20,8 @@ export default function AddStudioAlbum() {
     setLoading(true);
     try {
       const apiBase = import.meta.env.VITE_API_URL;
-      const apiKey = import.meta.env.VITE_API_KEY;
-      const jwt = getCookie('jwt');
       const url = `${apiBase}/api/albums/studio?discogs_id=${id}&discogs_type=${mode}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'X-API-KEY': apiKey,
-          'Authorization': jwt ? `Bearer ${jwt}` : ''
-        }
-      });
+      const res = await authFetch(url, { method: 'POST' }, { label: 'add-studio-album' });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
         const errorMessage = payload?.message || `Erreur ${res.status}: ${res.statusText}`;
