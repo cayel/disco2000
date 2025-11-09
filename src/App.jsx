@@ -2,8 +2,8 @@ import { decodeJwt, isJwtExpired } from './utils/jwt';
 import authFetch from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade } from '@chakra-ui/react'
-import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon } from '@chakra-ui/icons'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton } from '@chakra-ui/react'
+import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, HamburgerIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
@@ -12,7 +12,6 @@ import AlbumDetailsModal from './components/AlbumDetailsModal'
 import StudioStats from './components/StudioStats'
 import AlbumCard from './components/AlbumCard'
 import CollectionExplorer from './components/CollectionExplorer'
-import { Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, useDisclosure } from '@chakra-ui/react';
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
 import './App.css'
@@ -24,6 +23,11 @@ function App() {
     onOpen: openDetails,
     onClose: closeDetails
   } = useDisclosure();
+  const {
+    isOpen: isFiltersOpen,
+    onOpen: openFilters,
+    onClose: closeFilters
+  } = useDisclosure(); // pour le drawer des filtres mobile
   const [user, setUser] = useState(() => {
     const current = auth.currentUser;
     const jwtFromCookie = getCookie('jwt');
@@ -191,8 +195,27 @@ function App() {
   const [hasCustomYearRange, setHasCustomYearRange] = useState(false);
   const { colorMode, toggleColorMode } = useColorMode();
   const [albums, setAlbums] = useState([])
-  const [albumsPerRow, setAlbumsPerRow] = useState(5)
+  // Adapter le nombre d'albums par ligne selon la taille d'écran
+  const [albumsPerRow, setAlbumsPerRow] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 ? 2 : 5;
+    }
+    return 5;
+  })
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
+
+  // Réajuster albumsPerRow lors du resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768 && albumsPerRow > 3) {
+        setAlbumsPerRow(2);
+      } else if (window.innerWidth >= 768 && albumsPerRow < 4) {
+        setAlbumsPerRow(5);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [albumsPerRow]);
   // Gestion du chargement initial et des rafraîchissements partiels (pagination / filtres)
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [albumsLoading, setAlbumsLoading] = useState(false);
@@ -556,9 +579,9 @@ function App() {
         right="50%"
         ml="-50vw"
         mr="-50vw"
-        px={{ base: 4, md: 10 }}
-        py={3}
-        mb={8}
+        px={{ base: 3, md: 10 }}
+        py={{ base: 2, md: 3 }}
+        mb={{ base: 4, md: 8 }}
         boxShadow="sm"
         bg={colorMode === 'dark' ? 'brand.900' : 'white'}
         display="flex"
@@ -574,7 +597,7 @@ function App() {
         <Flex alignItems="center" gap={2}>
           <Heading
             as="h1"
-            size="lg"
+            size={{ base: 'md', md: 'lg' }}
             fontWeight="bold"
             letterSpacing="tight"
             color={colorMode === 'dark' ? 'accent.500' : 'brand.900'}
@@ -596,7 +619,7 @@ function App() {
             </Badge>
           )}
         </Flex>
-        <Box display="flex" alignItems="center" gap={2}>
+        <Box display={{ base: 'none', md: 'flex' }} alignItems="center" gap={2}>
           <Button
             variant={!showStats && !showProfile && !showCollection ? 'solid' : 'ghost'}
             size="sm"
@@ -641,6 +664,8 @@ function App() {
               Ma collection
             </Button>
           ) : null}
+        </Box>
+        <Box display="flex" alignItems="center" gap={2}>
           {user && jwt ? (
             <IconButton
               variant="ghost"
@@ -685,13 +710,13 @@ function App() {
       </Fade>
       <Fade in={!showProfile && !showStats && !showCollection} unmountOnExit>
         <Box
-          px={4}
           minH="100vh"
-          pb={12}
+          pb={{ base: 24, md: 12 }}
           bg={colorMode === 'dark' ? 'brand.900' : '#f7f7fa'}
           transition="background 0.3s"
           position="relative"
         >
+          <Box maxW="1200px" mx="auto" px={{ base: 3, md: 4 }}>
           {/* Bouton flottant pour ouvrir la modale d'ajout */}
           {user && jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('contributeur') && (
             <Tooltip label="Ajouter un album studio" placement="left">
@@ -726,9 +751,23 @@ function App() {
           {error && <Text color="red.500">Erreur : {error}</Text>}
           {!loading && !error && (
             <>
+            {/* Bouton filtres mobile */}
+            <Button
+              display={{ base: 'flex', md: 'none' }}
+              leftIcon={<HamburgerIcon />}
+              onClick={openFilters}
+              colorScheme="purple"
+              variant="outline"
+              size="sm"
+              mb={4}
+              width="full"
+            >
+              Filtres {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+            </Button>
+
             <Box display="flex" flexDirection={{ base: 'column', md: 'row' }} gap={8}>
-              {/* Sidebar des filtres à gauche */}
-              <Box w={{ base: '100%', md: '320px' }} mb={{ base: 8, md: 0 }}>
+              {/* Sidebar des filtres à gauche (masqué sur mobile) */}
+              <Box w={{ base: '100%', md: '320px' }} mb={{ base: 8, md: 0 }} display={{ base: 'none', md: 'block' }}>
                 <FormControl mb={4}>
                   <FormLabel fontSize="sm" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
                     Artistes
@@ -838,7 +877,7 @@ function App() {
                     </Box>
                   );
                 })()}
-                <FormControl mb={2}>
+                <FormControl mb={2} display={{ base: 'none', md: 'block' }}>
                   <FormLabel fontWeight="bold">Albums par ligne</FormLabel>
                   <Slider
                     min={4}
@@ -915,11 +954,12 @@ function App() {
                       justify="space-between"
                       gap={3}
                     >
-                      <ButtonGroup size="sm" isAttached variant="outline" colorScheme="purple">
+                      <ButtonGroup size={{ base: 'md', md: 'sm' }} isAttached variant="outline" colorScheme="purple">
                         <Button
                           onClick={goToFirstPage}
                           isDisabled={!canGoPrev}
                           leftIcon={<ArrowLeftIcon />}
+                          display={{ base: 'none', sm: 'flex' }}
                         >
                           Première
                         </Button>
@@ -927,21 +967,24 @@ function App() {
                           onClick={goToPrevPage}
                           isDisabled={!canGoPrev}
                           leftIcon={<ChevronLeftIcon />}
+                          minW={{ base: '44px', md: 'auto' }}
                         >
-                          Précédent
+                          <Text display={{ base: 'none', sm: 'inline' }}>Précédent</Text>
                         </Button>
                         <Button
                           onClick={goToNextPage}
                           isDisabled={!canGoNext}
                           rightIcon={<ChevronRightIcon />}
                           variant="solid"
+                          minW={{ base: '44px', md: 'auto' }}
                         >
-                          Suivant
+                          <Text display={{ base: 'none', sm: 'inline' }}>Suivant</Text>
                         </Button>
                         <Button
                           onClick={goToLastPage}
                           isDisabled={!canGoNext}
                           rightIcon={<ArrowRightIcon />}
+                          display={{ base: 'none', sm: 'flex' }}
                         >
                           Dernière
                         </Button>
@@ -967,7 +1010,7 @@ function App() {
                         <Spinner size="lg" thickness="4px" speed="0.6s" color="purple.400" />
                       </Flex>
                     )}
-                    <SimpleGrid columns={albumsPerRow} spacing={2} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px">
+                    <SimpleGrid columns={albumsPerRow} spacing={{ base: 3, md: 2 }} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px">
                       {albums.length === 0 ? (
                         [...Array(albumsPerRow)].map((_, i) => (
                           <Box
@@ -1058,6 +1101,134 @@ function App() {
                 </Box>
               </Box>
             </Box>
+            {/* Drawer filtres mobile */}
+            <Drawer isOpen={isFiltersOpen} placement="left" onClose={closeFilters} size="xs">
+              <DrawerOverlay />
+              <DrawerContent bg={colorMode === 'dark' ? 'brand.900' : 'white'}>
+                <DrawerCloseButton />
+                <DrawerHeader borderBottomWidth="1px" borderColor={colorMode === 'dark' ? 'brand.800' : 'gray.200'}>
+                  Filtres
+                </DrawerHeader>
+                <DrawerBody pt={4}>
+                  <FormControl mb={4}>
+                    <FormLabel fontSize="sm" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                      Artistes
+                    </FormLabel>
+                    <InputGroup size="sm">
+                      <Input
+                        placeholder="Rechercher un artiste"
+                        value={artistQuery}
+                        onChange={e => setArtistQuery(e.target.value)}
+                        bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                        color={colorMode === 'dark' ? 'white' : 'brand.900'}
+                        borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
+                        _hover={{ borderColor: 'accent.500' }}
+                        pr={artistQuery ? '2.5rem' : undefined}
+                      />
+                      {artistQuery && (
+                        <InputRightElement height="100%" pr={1}>
+                          <CloseButton size="sm" onClick={() => setArtistQuery('')} aria-label="Effacer la recherche d'artiste" />
+                        </InputRightElement>
+                      )}
+                    </InputGroup>
+                    <Text mt={2} fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                      {filteredArtistOptions.length} artiste{filteredArtistOptions.length > 1 ? 's' : ''}
+                    </Text>
+                    <Box
+                      mt={2}
+                      borderWidth={1}
+                      borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                      borderRadius="md"
+                      maxH="200px"
+                      overflowY="auto"
+                      bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                      boxShadow="sm"
+                    >
+                      {filteredArtistOptions.length === 0 ? (
+                        <Text px={3} py={2} fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                          Aucun artiste trouvé
+                        </Text>
+                      ) : (
+                        filteredArtistOptions.map(artist => {
+                          const isActive = artistFilter === artist;
+                          return (
+                            <Button
+                              key={artist}
+                              justifyContent="flex-start"
+                              variant={isActive ? 'solid' : 'ghost'}
+                              colorScheme={isActive ? 'purple' : undefined}
+                              onClick={() => {
+                                handleArtistSelect(artist);
+                                closeFilters();
+                              }}
+                              w="100%"
+                              borderRadius={0}
+                              size="sm"
+                              fontWeight={isActive ? 'bold' : 'normal'}
+                              bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : 'transparent'}
+                              color={isActive ? (colorMode === 'dark' ? 'white' : 'purple.700') : (colorMode === 'dark' ? 'gray.100' : 'brand.900')}
+                              _hover={{ bg: isActive ? (colorMode === 'dark' ? 'purple.600' : 'purple.200') : (colorMode === 'dark' ? 'brand.700' : 'gray.100') }}
+                              textAlign="left"
+                            >
+                              {artist}
+                            </Button>
+                          );
+                        })
+                      )}
+                    </Box>
+                    {artistFilter && (
+                      <Button mt={2} size="sm" variant="link" colorScheme="purple" onClick={() => { clearArtistFilter(); closeFilters(); }}>
+                        Réinitialiser le filtre
+                      </Button>
+                    )}
+                  </FormControl>
+                  {availableYears && (() => {
+                    const [minSelected, maxSelected] = yearRange[0] !== null ? yearRange : [availableYears.min, availableYears.max];
+                    return (
+                      <Box mb={4}>
+                        <Text fontSize="sm" mb={1} color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                          Plage d'années : {minSelected} - {maxSelected}
+                        </Text>
+                        <RangeSlider
+                          min={availableYears.min}
+                          max={availableYears.max}
+                          step={1}
+                          value={[minSelected, maxSelected]}
+                          onChange={val => setYearRange(val)}
+                          onChangeEnd={(val) => {
+                            handleYearRangeApply(val);
+                            closeFilters();
+                          }}
+                          colorScheme="purple"
+                        >
+                          <RangeSliderTrack>
+                            <RangeSliderFilledTrack />
+                          </RangeSliderTrack>
+                          <RangeSliderThumb index={0} />
+                          <RangeSliderThumb index={1} />
+                        </RangeSlider>
+                        <Button
+                          mt={1}
+                          size="xs"
+                          variant="ghost"
+                          colorScheme="gray"
+                          onClick={() => {
+                            const defaultRange = [availableYears.min, availableYears.max];
+                            setYearRange(defaultRange);
+                            handleYearRangeApply(defaultRange);
+                            setHasCustomYearRange(false);
+                            closeFilters();
+                          }}
+                        >
+                          Toutes les années
+                        </Button>
+                      </Box>
+                    );
+                  })()}
+                </DrawerBody>
+              </DrawerContent>
+            </Drawer>
+
             {/* Fenêtre modale de détails d'album */}
             <AlbumDetailsModal
               albumId={selectedAlbumId}
@@ -1074,8 +1245,105 @@ function App() {
             />
             </>
           )}
+          </Box>
         </Box>
       </Fade>
+      
+      {/* Bottom Navigation Mobile */}
+      <Box
+        display={{ base: 'flex', md: 'none' }}
+        position="fixed"
+        bottom={0}
+        left={0}
+        right={0}
+        bg={colorMode === 'dark' ? 'brand.900' : 'white'}
+        borderTopWidth={1}
+        borderColor={colorMode === 'dark' ? 'brand.800' : 'gray.200'}
+        boxShadow="0 -2px 10px rgba(0,0,0,0.1)"
+        zIndex={20}
+        py={2}
+        px={2}
+      >
+        <ButtonGroup isAttached={false} width="100%" justifyContent="space-around" variant="ghost">
+          <Button
+            flex={1}
+            flexDirection="column"
+            height="auto"
+            py={2}
+            colorScheme={!showStats && !showProfile && !showCollection ? 'purple' : 'gray'}
+            variant={!showStats && !showProfile && !showCollection ? 'solid' : 'ghost'}
+            onClick={() => {
+              setShowStats(false);
+              setShowProfile(false);
+              setShowCollection(false);
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            </svg>
+            <Text fontSize="xs" mt={1}>Disques</Text>
+          </Button>
+          <Button
+            flex={1}
+            flexDirection="column"
+            height="auto"
+            py={2}
+            colorScheme={showStats && !showProfile ? 'purple' : 'gray'}
+            variant={showStats && !showProfile ? 'solid' : 'ghost'}
+            onClick={() => {
+              setShowStats(true);
+              setShowProfile(false);
+              setShowCollection(false);
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 20V10M12 20V4M6 20v-6"/>
+            </svg>
+            <Text fontSize="xs" mt={1}>Stats</Text>
+          </Button>
+          {isUser && user && jwt ? (
+            <Button
+              flex={1}
+              flexDirection="column"
+              height="auto"
+              py={2}
+              colorScheme={showCollection && !showProfile ? 'purple' : 'gray'}
+              variant={showCollection && !showProfile ? 'solid' : 'ghost'}
+              onClick={() => {
+                setShowCollection(true);
+                setShowStats(false);
+                setShowProfile(false);
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+              </svg>
+              <Text fontSize="xs" mt={1}>Collection</Text>
+            </Button>
+          ) : null}
+          {user && jwt ? (
+            <Button
+              flex={1}
+              flexDirection="column"
+              height="auto"
+              py={2}
+              colorScheme={showProfile ? 'purple' : 'gray'}
+              variant={showProfile ? 'solid' : 'ghost'}
+              onClick={() => {
+                setShowProfile(true);
+                setShowStats(false);
+                setShowCollection(false);
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="7" r="4"/>
+                <path d="M5.5 21a8.38 8.38 0 0 1 13 0"/>
+              </svg>
+              <Text fontSize="xs" mt={1}>Profil</Text>
+            </Button>
+          ) : null}
+        </ButtonGroup>
+      </Box>
       
       {/* Bouton Scroll to Top */}
       <ScaleFade in={showScrollTop} initialScale={0.8}>
@@ -1085,13 +1353,14 @@ function App() {
           borderRadius="full"
           size="lg"
           position="fixed"
-          bottom={{ base: 20, md: 24 }}
+          bottom={{ base: 24, md: 24 }}
           right={{ base: 6, md: 10 }}
           zIndex={15}
           boxShadow="2xl"
           onClick={scrollToTop}
           aria-label="Retour en haut"
           title="Retour en haut"
+          display={{ base: showScrollTop ? 'flex' : 'none', md: showScrollTop ? 'flex' : 'none' }}
         />
       </ScaleFade>
     </>

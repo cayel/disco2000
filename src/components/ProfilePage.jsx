@@ -32,7 +32,13 @@ export default function ProfilePage({ onLogout }) {
   if (!user) return null;
 
   return (
-    <Box maxW="400px" mx="auto" mt={10} p={6} bg={colorMode === 'dark' ? 'brand.900' : 'white'} borderRadius="xl" boxShadow="lg" textAlign="center">
+    <Box
+      minH="100vh"
+      pb={{ base: 24, md: 12 }}
+      bg={colorMode === 'dark' ? 'brand.900' : '#f7f7fa'}
+    >
+      <Box maxW="1200px" mx="auto" px={{ base: 3, md: 4 }} pt={6}>
+        <Box maxW="500px" mx="auto" p={6} bg={colorMode === 'dark' ? 'rgba(35, 37, 38, 0.92)' : 'white'} borderRadius="xl" boxShadow="lg" textAlign="center" borderWidth={colorMode === 'dark' ? 1 : 0} borderColor={colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100'}>
       {jwtPayload && (
         <>
           <Avatar size="2xl" name={jwtPayload.first_name + ' ' + jwtPayload.last_name} mb={4} />
@@ -46,8 +52,10 @@ export default function ProfilePage({ onLogout }) {
         </>
       )}
       <Stack direction="row" spacing={4} justify="center" mb={2}>
-  <Button colorScheme="red" onClick={() => { signOut(auth); deleteCookie('jwt'); deleteCookie('refresh_token'); window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null })); onLogout && onLogout(); }}>Se déconnecter</Button>
+        <Button colorScheme="red" onClick={() => { signOut(auth); deleteCookie('jwt'); deleteCookie('refresh_token'); window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null })); onLogout && onLogout(); }}>Se déconnecter</Button>
       </Stack>
+        </Box>
+      </Box>
     </Box>
   );
 }

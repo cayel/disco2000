@@ -157,15 +157,14 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
   return (
     <Box
       minH="100vh"
-      px={4}
-      pb={12}
+      pb={{ base: 24, md: 12 }}
       bg={colorMode === 'dark' ? 'brand.900' : '#f7f7fa'}
     >
       <Box
         w="100%"
-        maxW="1100px"
+        maxW="1200px"
         mx="auto"
-        pt={10}
+        pt={6}
         pb={6}
         px={{ base: 4, md: 6 }}
         borderRadius="2xl"
