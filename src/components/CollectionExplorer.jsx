@@ -156,18 +156,25 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
 
   return (
     <Box
-      w="100%"
-      maxW="1100px"
-      mx="auto"
-      mt={10}
-      p={{ base: 4, md: 6 }}
-      borderRadius="2xl"
-      boxShadow="xl"
-      bg={containerBg}
-      textAlign="left"
-      borderWidth={colorMode === 'dark' ? 1 : 0}
-      borderColor={colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100'}
+      minH="100vh"
+      px={4}
+      pb={12}
+      bg={colorMode === 'dark' ? 'brand.900' : '#f7f7fa'}
     >
+      <Box
+        w="100%"
+        maxW="1100px"
+        mx="auto"
+        pt={10}
+        pb={6}
+        px={{ base: 4, md: 6 }}
+        borderRadius="2xl"
+        boxShadow="xl"
+        bg={containerBg}
+        textAlign="left"
+        borderWidth={colorMode === 'dark' ? 1 : 0}
+        borderColor={colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100'}
+      >
       <Stack spacing={6}>
         <Flex align={{ base: 'flex-start', md: 'center' }} justify="space-between" gap={4} wrap="wrap">
           <Box>
@@ -348,6 +355,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
           </Flex>
         )}
       </Stack>
+      </Box>
     </Box>
   );
 }

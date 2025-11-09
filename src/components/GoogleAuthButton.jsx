@@ -1,5 +1,5 @@
 
-import { Button } from '@chakra-ui/react';
+import { Button, useToast } from '@chakra-ui/react';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useState, useEffect } from 'react';
@@ -7,6 +7,7 @@ import { setCookie } from '../utils/cookie';
 
 
 export default function GoogleAuthButton({ onLoginSuccess, jwtToken }) {
+  const toast = useToast();
   const [user, setUser] = useState(() => (jwtToken ? auth.currentUser : null));
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(setUser);
@@ -50,10 +51,25 @@ export default function GoogleAuthButton({ onLoginSuccess, jwtToken }) {
           setCookie('refresh_token', jwtData.refresh_token, 30, true);
         }
         window.dispatchEvent(new CustomEvent('jwt-updated', { detail: jwtData.access_token }));
+        toast({
+          title: 'Connexion réussie',
+          description: `Bienvenue ${result.user.displayName || result.user.email}`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+          position: 'top-right',
+        });
         if (onLoginSuccess) onLoginSuccess();
       }
     } catch (err) {
-      alert('Erreur de connexion : ' + err.message);
+      toast({
+        title: 'Erreur de connexion',
+        description: err.message || 'Impossible de se connecter avec Google',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
     }
   };
 

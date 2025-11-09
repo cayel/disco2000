@@ -29,13 +29,22 @@ export default function AddStudioAlbum() {
       }
       toast({
         title: 'Album studio ajouté',
+        description: payload?.title ? `"${payload.title}" a été ajouté avec succès` : 'L\'album a été ajouté au catalogue',
         status: 'success',
         duration: 4000,
         isClosable: true,
+        position: 'top-right',
       });
       setId('');
     } catch (err) {
-      toast({ title: err.message || 'Erreur', status: 'error', duration: 3000 });
+      toast({
+        title: 'Erreur lors de l\'ajout',
+        description: err.message || 'Impossible d\'ajouter l\'album',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
     } finally {
       setLoading(false);
     }

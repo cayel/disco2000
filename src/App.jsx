@@ -2,8 +2,8 @@ import { decodeJwt, isJwtExpired } from './utils/jwt';
 import authFetch from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText } from '@chakra-ui/react'
-import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade } from '@chakra-ui/react'
+import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
@@ -524,6 +524,29 @@ function App() {
   const canGoPrev = page > 1;
   const canGoNext = page < totalPages;
 
+  // Calcul du nombre de filtres actifs
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (artistFilter) count++;
+    if (hasCustomYearRange) count++;
+    return count;
+  }, [artistFilter, hasCustomYearRange]);
+
+  // État pour le bouton scroll-to-top
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   return (
     <>
       <Box
@@ -548,16 +571,31 @@ function App() {
         borderColor={colorMode === 'dark' ? 'brand.800' : 'gray.200'}
         style={{ left: 0, right: 0 }}
       >
-        <Heading
-          as="h1"
-          size="lg"
-          fontWeight="bold"
-          letterSpacing="tight"
-          color={colorMode === 'dark' ? 'accent.500' : 'brand.900'}
-          fontFamily="'Montserrat', 'Segoe UI', Arial, sans-serif"
-        >
-          Disco 2000
-        </Heading>
+        <Flex alignItems="center" gap={2}>
+          <Heading
+            as="h1"
+            size="lg"
+            fontWeight="bold"
+            letterSpacing="tight"
+            color={colorMode === 'dark' ? 'accent.500' : 'brand.900'}
+            fontFamily="'Montserrat', 'Segoe UI', Arial, sans-serif"
+          >
+            Disco 2000
+          </Heading>
+          {activeFiltersCount > 0 && !showStats && !showProfile && !showCollection && (
+            <Badge
+              colorScheme="purple"
+              variant="solid"
+              borderRadius="full"
+              px={2}
+              py={0.5}
+              fontSize="0.75rem"
+              fontWeight="bold"
+            >
+              {activeFiltersCount} filtre{activeFiltersCount > 1 ? 's' : ''}
+            </Badge>
+          )}
+        </Flex>
         <Box display="flex" alignItems="center" gap={2}>
           <Button
             variant={!showStats && !showProfile && !showCollection ? 'solid' : 'ghost'}
@@ -630,11 +668,13 @@ function App() {
           />
         </Box>
       </Box>
-      {showProfile && user ? (
+      <Fade in={showProfile && !!user} unmountOnExit>
         <ProfilePage onLogout={() => setShowProfile(false)} onBack={() => setShowProfile(false)} />
-      ) : showStats ? (
+      </Fade>
+      <Fade in={showStats && !showProfile} unmountOnExit>
         <StudioStats />
-      ) : showCollection && isUser ? (
+      </Fade>
+      <Fade in={showCollection && isUser && !showProfile && !showStats} unmountOnExit>
         <CollectionExplorer
           albums={allAlbums}
           loading={allAlbumsLoading}
@@ -642,7 +682,8 @@ function App() {
           onRefresh={refreshAllData}
           isUser={isUser}
         />
-      ) : (
+      </Fade>
+      <Fade in={!showProfile && !showStats && !showCollection} unmountOnExit>
         <Box
           px={4}
           minH="100vh"
@@ -929,34 +970,58 @@ function App() {
                     <SimpleGrid columns={albumsPerRow} spacing={2} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px">
                       {albums.length === 0 ? (
                         [...Array(albumsPerRow)].map((_, i) => (
-                          <Flex
+                          <Box
                             key={`empty-skel-${i}`}
-                            direction="column"
-                            align="center"
-                            justify="flex-start"
-                            p={2}
-                            borderWidth={1}
-                            borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
-                            borderStyle="dashed"
-                            borderRadius="md"
-                            bg={colorMode === 'dark' ? 'brand.900' : 'white'}
-                            minH="240px"
+                            position="relative"
+                            borderRadius="xl"
+                            overflow="hidden"
+                            boxShadow="md"
+                            bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                            aspectRatio={1}
                           >
-                            <Skeleton w="100%" h="140px" borderRadius="md" startColor={colorMode === 'dark' ? 'purple.900' : 'purple.50'} endColor={colorMode === 'dark' ? 'purple.700' : 'purple.100'} />
-                            <SkeletonText mt={3} noOfLines={2} spacing={2} skeletonHeight={3} w="90%" />
+                            {/* Skeleton de l'image */}
+                            <Skeleton w="100%" h="100%" startColor={colorMode === 'dark' ? 'purple.900' : 'purple.50'} endColor={colorMode === 'dark' ? 'purple.700' : 'purple.100'} />
+                            
+                            {/* Overlay avec skeleton du texte */}
+                            <Box
+                              position="absolute"
+                              bottom={0}
+                              left={0}
+                              right={0}
+                              bg={colorMode === 'dark' ? 'rgba(35,37,38,0.95)' : 'rgba(255,255,255,0.95)'}
+                              p={3}
+                            >
+                              <SkeletonText noOfLines={2} spacing={2} skeletonHeight={2.5} />
+                              <Flex mt={2} gap={1.5}>
+                                <Skeleton h="18px" w="45px" borderRadius="md" />
+                                <Skeleton h="18px" w="55px" borderRadius="md" />
+                              </Flex>
+                            </Box>
+                            
                             {i === 0 && (
-                              <Flex direction="column" align="center" mt={3} gap={2}>
-                                <Text fontSize="sm" fontWeight="bold" color={colorMode === 'dark' ? 'gray.100' : 'brand.700'}>
+                              <Box
+                                position="absolute"
+                                inset={0}
+                                display="flex"
+                                flexDirection="column"
+                                alignItems="center"
+                                justifyContent="center"
+                                bg={colorMode === 'dark' ? 'rgba(10,10,25,0.92)' : 'rgba(255,255,255,0.92)'}
+                                backdropFilter="blur(4px)"
+                                zIndex={2}
+                                p={4}
+                              >
+                                <Text fontSize="md" fontWeight="bold" color={colorMode === 'dark' ? 'gray.100' : 'brand.700'} mb={2}>
                                   Aucun résultat
                                 </Text>
-                                <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} textAlign="center" px={2}>
-                                  Ajuste les filtres ou réinitialise pour revoir la liste complète.
+                                <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} textAlign="center" mb={3}>
+                                  Ajuste les filtres ou réinitialise
                                 </Text>
                                 {(artistFilter || (appliedYearRange[0] !== null && appliedYearRange[1] !== null)) && (
                                   <Button
                                     size="xs"
                                     colorScheme="purple"
-                                    variant="outline"
+                                    variant="solid"
                                     onClick={() => {
                                       clearArtistFilter();
                                       if (availableYears) {
@@ -969,9 +1034,9 @@ function App() {
                                     Réinitialiser
                                   </Button>
                                 )}
-                              </Flex>
+                              </Box>
                             )}
-                          </Flex>
+                          </Box>
                         ))
                       ) : (
                         albums.map((album, index) => (
@@ -1010,7 +1075,25 @@ function App() {
             </>
           )}
         </Box>
-      )}
+      </Fade>
+      
+      {/* Bouton Scroll to Top */}
+      <ScaleFade in={showScrollTop} initialScale={0.8}>
+        <IconButton
+          icon={<ChevronUpIcon boxSize={6} />}
+          colorScheme="purple"
+          borderRadius="full"
+          size="lg"
+          position="fixed"
+          bottom={{ base: 20, md: 24 }}
+          right={{ base: 6, md: 10 }}
+          zIndex={15}
+          boxShadow="2xl"
+          onClick={scrollToTop}
+          aria-label="Retour en haut"
+          title="Retour en haut"
+        />
+      </ScaleFade>
     </>
   );
 }
