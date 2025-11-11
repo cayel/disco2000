@@ -383,27 +383,33 @@ function App() {
     refreshCurrentPage();
   }, [refreshCurrentPage]);
 
-  // Mémorisation de la liste des artistes uniques pour le Select
-  const uniqueArtists = useMemo(() => {
+  // Mémorisation de la liste des artistes avec leur nombre d'albums
+  const artistsWithCount = useMemo(() => {
     const source = allAlbums.length ? allAlbums : albums;
-    const artistSet = new Set();
+    const artistMap = new Map();
     source.forEach(album => {
       if (!album) return;
       const rawArtist = typeof album.artist === 'string' ? album.artist : album.artist?.name;
       if (rawArtist) {
-        artistSet.add(rawArtist);
+        artistMap.set(rawArtist, (artistMap.get(rawArtist) || 0) + 1);
       }
     });
-    return Array.from(artistSet).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+    return Array.from(artistMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count); // Tri par popularité décroissante
   }, [allAlbums, albums]);
+
+  const uniqueArtists = useMemo(() => {
+    return artistsWithCount.map(a => a.name);
+  }, [artistsWithCount]);
 
   const filteredArtistOptions = useMemo(() => {
     if (!artistQuery) {
-      return uniqueArtists;
+      return artistsWithCount;
     }
     const normalizedQuery = artistQuery.trim().toLowerCase();
-    return uniqueArtists.filter(artistName => artistName.toLowerCase().includes(normalizedQuery));
-  }, [artistQuery, uniqueArtists]);
+    return artistsWithCount.filter(artist => artist.name.toLowerCase().includes(normalizedQuery));
+  }, [artistQuery, artistsWithCount]);
 
   const availableYears = useMemo(() => {
     const source = allAlbums.length ? allAlbums : albums;
@@ -792,43 +798,65 @@ function App() {
                   <Text mt={2} fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
                     {filteredArtistOptions.length} artiste{filteredArtistOptions.length > 1 ? 's' : ''} {artistQuery ? 'correspondent à la recherche' : 'disponibles'}
                   </Text>
+                  {/* Tags Cloud */}
                   <Box
-                    mt={2}
+                    mt={3}
+                    p={3}
                     borderWidth={1}
                     borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
                     borderRadius="md"
-                    maxH="280px"
+                    maxH="320px"
                     overflowY="auto"
                     bg={colorMode === 'dark' ? 'brand.800' : 'white'}
                     boxShadow="sm"
                   >
                     {filteredArtistOptions.length === 0 ? (
-                      <Text px={3} py={2} fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                      <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} textAlign="center">
                         Aucun artiste trouvé
                       </Text>
                     ) : (
-                      filteredArtistOptions.map(artist => {
-                        const isActive = artistFilter === artist;
-                        return (
-                          <Button
-                            key={artist}
-                            justifyContent="flex-start"
-                            variant={isActive ? 'solid' : 'ghost'}
-                            colorScheme={isActive ? 'purple' : undefined}
-                            onClick={() => handleArtistSelect(artist)}
-                            w="100%"
-                            borderRadius={0}
-                            size="sm"
-                            fontWeight={isActive ? 'bold' : 'normal'}
-                            bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : 'transparent'}
-                            color={isActive ? (colorMode === 'dark' ? 'white' : 'purple.700') : (colorMode === 'dark' ? 'gray.100' : 'brand.900')}
-                            _hover={{ bg: isActive ? (colorMode === 'dark' ? 'purple.600' : 'purple.200') : (colorMode === 'dark' ? 'brand.700' : 'gray.100') }}
-                            textAlign="left"
-                          >
-                            {artist}
-                          </Button>
-                        );
-                      })
+                      <Flex wrap="wrap" gap={2} justify="flex-start">
+                        {filteredArtistOptions.map(artist => {
+                          const isActive = artistFilter === artist.name;
+                          // Calcul de la taille en fonction du nombre d'albums
+                          const maxCount = Math.max(...filteredArtistOptions.map(a => a.count));
+                          const minCount = Math.min(...filteredArtistOptions.map(a => a.count));
+                          const range = maxCount - minCount || 1;
+                          const normalized = (artist.count - minCount) / range;
+                          // Taille de police entre 11px et 18px
+                          const fontSize = 11 + (normalized * 7);
+                          // Opacité entre 0.6 et 1
+                          const opacity = 0.6 + (normalized * 0.4);
+                          
+                          return (
+                            <Badge
+                              key={artist.name}
+                              fontSize={`${fontSize}px`}
+                              px={3}
+                              py={1.5}
+                              borderRadius="full"
+                              cursor="pointer"
+                              opacity={1}
+                              bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : (colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100')}
+                              color={isActive ? 'white' : (colorMode === 'dark' ? 'white' : 'brand.900')}
+                              fontWeight={isActive ? 'bold' : (normalized > 0.5 ? 'semibold' : 'medium')}
+                              borderWidth={colorMode === 'dark' && !isActive ? '1px' : '0'}
+                              borderColor="whiteAlpha.300"
+                              transition="all 0.2s"
+                              _hover={{
+                                transform: 'scale(1.08)',
+                                bg: isActive ? (colorMode === 'dark' ? 'purple.600' : 'purple.200') : (colorMode === 'dark' ? 'whiteAlpha.300' : 'gray.200'),
+                                shadow: 'md',
+                                borderColor: colorMode === 'dark' ? 'whiteAlpha.400' : undefined
+                              }}
+                              onClick={() => handleArtistSelect(artist.name)}
+                              title={`${artist.count} album${artist.count > 1 ? 's' : ''}`}
+                            >
+                              {artist.name}
+                            </Badge>
+                          );
+                        })}
+                      </Flex>
                     )}
                   </Box>
                   {artistFilter && (
@@ -1134,46 +1162,67 @@ function App() {
                     <Text mt={2} fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
                       {filteredArtistOptions.length} artiste{filteredArtistOptions.length > 1 ? 's' : ''}
                     </Text>
+                    {/* Tags Cloud Mobile */}
                     <Box
-                      mt={2}
+                      mt={3}
+                      p={3}
                       borderWidth={1}
                       borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
                       borderRadius="md"
-                      maxH="200px"
+                      maxH="300px"
                       overflowY="auto"
                       bg={colorMode === 'dark' ? 'brand.800' : 'white'}
                       boxShadow="sm"
                     >
                       {filteredArtistOptions.length === 0 ? (
-                        <Text px={3} py={2} fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                        <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} textAlign="center">
                           Aucun artiste trouvé
                         </Text>
                       ) : (
-                        filteredArtistOptions.map(artist => {
-                          const isActive = artistFilter === artist;
-                          return (
-                            <Button
-                              key={artist}
-                              justifyContent="flex-start"
-                              variant={isActive ? 'solid' : 'ghost'}
-                              colorScheme={isActive ? 'purple' : undefined}
-                              onClick={() => {
-                                handleArtistSelect(artist);
-                                closeFilters();
-                              }}
-                              w="100%"
-                              borderRadius={0}
-                              size="sm"
-                              fontWeight={isActive ? 'bold' : 'normal'}
-                              bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : 'transparent'}
-                              color={isActive ? (colorMode === 'dark' ? 'white' : 'purple.700') : (colorMode === 'dark' ? 'gray.100' : 'brand.900')}
-                              _hover={{ bg: isActive ? (colorMode === 'dark' ? 'purple.600' : 'purple.200') : (colorMode === 'dark' ? 'brand.700' : 'gray.100') }}
-                              textAlign="left"
-                            >
-                              {artist}
-                            </Button>
-                          );
-                        })
+                        <Flex wrap="wrap" gap={2} justify="flex-start">
+                          {filteredArtistOptions.map(artist => {
+                            const isActive = artistFilter === artist.name;
+                            // Calcul de la taille en fonction du nombre d'albums
+                            const maxCount = Math.max(...filteredArtistOptions.map(a => a.count));
+                            const minCount = Math.min(...filteredArtistOptions.map(a => a.count));
+                            const range = maxCount - minCount || 1;
+                            const normalized = (artist.count - minCount) / range;
+                            // Taille de police entre 12px et 16px (un peu plus petit sur mobile)
+                            const fontSize = 12 + (normalized * 4);
+                            // Opacité entre 0.6 et 1
+                            const opacity = 0.6 + (normalized * 0.4);
+                            
+                            return (
+                              <Badge
+                                key={artist.name}
+                                fontSize={`${fontSize}px`}
+                                px={3}
+                                py={2}
+                                borderRadius="full"
+                                cursor="pointer"
+                                opacity={1}
+                                bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : (colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100')}
+                                color={isActive ? 'white' : (colorMode === 'dark' ? 'white' : 'brand.900')}
+                                fontWeight={isActive ? 'bold' : (normalized > 0.5 ? 'semibold' : 'medium')}
+                                borderWidth={colorMode === 'dark' && !isActive ? '1px' : '0'}
+                                borderColor="whiteAlpha.300"
+                                transition="all 0.2s"
+                                _active={{
+                                  transform: 'scale(0.95)',
+                                }}
+                                onClick={() => {
+                                  handleArtistSelect(artist.name);
+                                  closeFilters();
+                                }}
+                              >
+                                {artist.name}
+                                <Text as="span" fontSize="10px" ml={1.5} opacity={0.8} fontWeight="normal">
+                                  {artist.count}
+                                </Text>
+                              </Badge>
+                            );
+                          })}
+                        </Flex>
                       )}
                     </Box>
                     {artistFilter && (
