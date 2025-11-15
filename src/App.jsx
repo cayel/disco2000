@@ -12,6 +12,7 @@ import AlbumDetailsModal from './components/AlbumDetailsModal'
 import StudioStats from './components/StudioStats'
 import AlbumCard from './components/AlbumCard'
 import CollectionExplorer from './components/CollectionExplorer'
+import ArtistManager from './components/ArtistManager'
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
 import './App.css'
@@ -39,6 +40,7 @@ function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
+  const [showArtistManager, setShowArtistManager] = useState(false);
   const [jwt, setJwt] = useState(() => {
     const token = getCookie('jwt');
     if (!token) return null;
@@ -88,6 +90,7 @@ function App() {
       setShowProfile(false);
       setShowStats(false);
       setShowCollection(false);
+      setShowArtistManager(false);
       setPage(1);
       setTotalAlbums(0);
       setAllAlbums([]);
@@ -121,6 +124,7 @@ function App() {
         setShowProfile(false);
         setShowStats(false);
         setShowCollection(false);
+        setShowArtistManager(false);
         return;
       }
       setUser(firebaseUser);
@@ -140,6 +144,7 @@ function App() {
         setShowProfile(false);
         setShowStats(false);
         setShowCollection(false);
+        setShowArtistManager(false);
         setPage(1);
         setTotalAlbums(0);
         setAllAlbums([]);
@@ -176,6 +181,7 @@ function App() {
       setShowProfile(false);
       setShowStats(false);
       setShowCollection(false);
+      setShowArtistManager(false);
       setPage(1);
       setTotalAlbums(0);
       setAllAlbums([]);
@@ -627,13 +633,14 @@ function App() {
         </Flex>
         <Box display={{ base: 'none', md: 'flex' }} alignItems="center" gap={2}>
           <Button
-            variant={!showStats && !showProfile && !showCollection ? 'solid' : 'ghost'}
+            variant={!showStats && !showProfile && !showCollection && !showArtistManager ? 'solid' : 'ghost'}
             size="sm"
             colorScheme="purple"
             onClick={() => {
               setShowStats(false);
               setShowProfile(false);
               setShowCollection(false);
+              setShowArtistManager(false);
             }}
             fontWeight="bold"
             px={3}
@@ -641,13 +648,14 @@ function App() {
             Disques
           </Button>
           <Button
-            variant={showStats && !showProfile ? 'solid' : 'ghost'}
+            variant={showStats && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
             size="sm"
             colorScheme="purple"
             onClick={() => {
               setShowStats(true);
               setShowProfile(false);
               setShowCollection(false);
+              setShowArtistManager(false);
             }}
             fontWeight="bold"
             px={3}
@@ -656,18 +664,36 @@ function App() {
           </Button>
           {isUser && user && jwt ? (
             <Button
-              variant={showCollection && !showProfile ? 'solid' : 'ghost'}
+              variant={showCollection && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
               size="sm"
               colorScheme="purple"
               onClick={() => {
                 setShowCollection(true);
                 setShowStats(false);
                 setShowProfile(false);
+                setShowArtistManager(false);
               }}
               fontWeight="bold"
               px={3}
             >
               Ma collection
+            </Button>
+          ) : null}
+          {isContributor && user && jwt ? (
+            <Button
+              variant={showArtistManager ? 'solid' : 'ghost'}
+              size="sm"
+              colorScheme="purple"
+              onClick={() => {
+                setShowArtistManager(true);
+                setShowCollection(false);
+                setShowStats(false);
+                setShowProfile(false);
+              }}
+              fontWeight="bold"
+              px={3}
+            >
+              Artistes
             </Button>
           ) : null}
         </Box>
@@ -685,6 +711,7 @@ function App() {
                 setShowProfile(true);
                 setShowStats(false);
                 setShowCollection(false);
+                setShowArtistManager(false);
               }}
               title={user.displayName || user.email || 'Mon profil'}
             />
@@ -705,7 +732,7 @@ function App() {
       <Fade in={showStats && !showProfile} unmountOnExit>
         <StudioStats />
       </Fade>
-      <Fade in={showCollection && isUser && !showProfile && !showStats} unmountOnExit>
+      <Fade in={showCollection && isUser && !showProfile && !showStats && !showArtistManager} unmountOnExit>
         <CollectionExplorer
           albums={allAlbums}
           loading={allAlbumsLoading}
@@ -714,7 +741,10 @@ function App() {
           isUser={isUser}
         />
       </Fade>
-      <Fade in={!showProfile && !showStats && !showCollection} unmountOnExit>
+      <Fade in={showArtistManager && isContributor && !showProfile && !showStats && !showCollection} unmountOnExit>
+        <ArtistManager />
+      </Fade>
+      <Fade in={!showProfile && !showStats && !showCollection && !showArtistManager} unmountOnExit>
         <Box
           minH="100vh"
           pb={{ base: 24, md: 12 }}
@@ -1319,12 +1349,13 @@ function App() {
             flexDirection="column"
             height="auto"
             py={2}
-            colorScheme={!showStats && !showProfile && !showCollection ? 'purple' : 'gray'}
-            variant={!showStats && !showProfile && !showCollection ? 'solid' : 'ghost'}
+            colorScheme={!showStats && !showProfile && !showCollection && !showArtistManager ? 'purple' : 'gray'}
+            variant={!showStats && !showProfile && !showCollection && !showArtistManager ? 'solid' : 'ghost'}
             onClick={() => {
               setShowStats(false);
               setShowProfile(false);
               setShowCollection(false);
+              setShowArtistManager(false);
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1337,12 +1368,13 @@ function App() {
             flexDirection="column"
             height="auto"
             py={2}
-            colorScheme={showStats && !showProfile ? 'purple' : 'gray'}
-            variant={showStats && !showProfile ? 'solid' : 'ghost'}
+            colorScheme={showStats && !showProfile && !showArtistManager ? 'purple' : 'gray'}
+            variant={showStats && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
             onClick={() => {
               setShowStats(true);
               setShowProfile(false);
               setShowCollection(false);
+              setShowArtistManager(false);
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1356,18 +1388,40 @@ function App() {
               flexDirection="column"
               height="auto"
               py={2}
-              colorScheme={showCollection && !showProfile ? 'purple' : 'gray'}
-              variant={showCollection && !showProfile ? 'solid' : 'ghost'}
+              colorScheme={showCollection && !showProfile && !showArtistManager ? 'purple' : 'gray'}
+              variant={showCollection && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
               onClick={() => {
                 setShowCollection(true);
                 setShowStats(false);
                 setShowProfile(false);
+                setShowArtistManager(false);
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
               </svg>
               <Text fontSize="xs" mt={1}>Collection</Text>
+            </Button>
+          ) : null}
+          {isContributor && user && jwt ? (
+            <Button
+              flex={1}
+              flexDirection="column"
+              height="auto"
+              py={2}
+              colorScheme={showArtistManager ? 'purple' : 'gray'}
+              variant={showArtistManager ? 'solid' : 'ghost'}
+              onClick={() => {
+                setShowArtistManager(true);
+                setShowCollection(false);
+                setShowStats(false);
+                setShowProfile(false);
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+              <Text fontSize="xs" mt={1}>Artistes</Text>
             </Button>
           ) : null}
           {user && jwt ? (
@@ -1382,6 +1436,7 @@ function App() {
                 setShowProfile(true);
                 setShowStats(false);
                 setShowCollection(false);
+                setShowArtistManager(false);
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
