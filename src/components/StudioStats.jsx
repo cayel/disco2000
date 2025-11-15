@@ -23,15 +23,17 @@ import {
 } from '@chakra-ui/react';
 import CollectionStats from './CollectionStats';
 import AlbumsPerYearChart from './AlbumsPerYearChart';
+import CountryDistribution from './CountryDistribution';
 import authFetch from '../utils/authFetch';
 
 export default function StudioStats() {
   const jwt = getCookie('jwt');
   const jwtPayload = decodeJwt(jwt);
   const isUser = jwtPayload && Array.isArray(jwtPayload.roles) && jwtPayload.roles.includes('utilisateur');
-  // Suppression de l'ancien chargement complet des albums : on ne conserve que les stats agrégées.
   const [publicStats, setPublicStats] = useState(null);
+  const [allAlbums, setAllAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAlbums, setLoadingAlbums] = useState(true);
   const [error, setError] = useState(null);
   const { colorMode } = useColorMode();
   const containerBg = colorMode === 'dark' ? 'rgba(35, 37, 38, 0.92)' : 'white';
@@ -56,6 +58,50 @@ export default function StudioStats() {
         setError(err.message || 'Erreur de récupération des statistiques publiques');
         setLoading(false);
       });
+  }, []);
+
+  // Récupérer tous les artistes pour la répartition par pays
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL;
+    const fetchAllArtists = async () => {
+      try {
+        setLoadingAlbums(true);
+        const allArtistsData = [];
+        let page = 1;
+        let hasMore = true;
+
+        // Pagination pour récupérer tous les artistes
+        while (hasMore) {
+          const params = new URLSearchParams({ page, page_size: 100 });
+          const res = await authFetch(`${apiBase}/api/artists?${params.toString()}`, { method: 'GET' }, { label: 'fetch-all-artists-stats' });
+          if (!res.ok) throw new Error(`Erreur API (${res.status})`);
+          const data = await res.json();
+          
+          console.log('Structure de la réponse API:', data);
+          console.log('Clés disponibles:', Object.keys(data));
+          
+          // La réponse peut avoir différentes structures
+          const artistsList = data.artists || data.items || data.data || data;
+          
+          if (Array.isArray(artistsList) && artistsList.length > 0) {
+            allArtistsData.push(...artistsList);
+            page++;
+            // Continuer si on a reçu une page complète
+            hasMore = artistsList.length === 100;
+          } else {
+            hasMore = false;
+          }
+        }
+        
+        console.log('CountryDistribution: Artistes récupérés:', allArtistsData.length);
+        setAllAlbums(allArtistsData);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des artistes:', err);
+      } finally {
+        setLoadingAlbums(false);
+      }
+    };
+    fetchAllArtists();
   }, []);
 
   const yearDistribution = useMemo(() => {
@@ -197,8 +243,19 @@ export default function StudioStats() {
                       </StatHelpText>
                     </Stat>
                   </SimpleGrid>
-                  <Box p={{ base: 0, md: 0 }}>
+                  
+                  <Box p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow="md" bg={cardBg}>
                     <AlbumsPerYearChart yearData={publicStats.albums_per_year || []} />
+                  </Box>
+                  
+                  <Box p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow="md" bg={cardBg}>
+                    {loadingAlbums ? (
+                      <Flex justify="center" align="center" minH="200px">
+                        <Spinner size="md" color="purple.500" />
+                      </Flex>
+                    ) : (
+                      <CountryDistribution artists={allAlbums} />
+                    )}
                   </Box>
                 </Stack>
               ) : (
