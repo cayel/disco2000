@@ -156,7 +156,7 @@ const AlbumCard = memo(({ album, index, colorMode, isUser, onClick }) => {
         
         <Tooltip label="Écouter sur Apple Music" placement="top" hasArrow>
           <Link
-            href={`https://music.apple.com/fr/search?term=${encodeURIComponent(album.artist)}+${encodeURIComponent(album.title)}`}
+            href={`https://music.apple.com/fr/search?term=${encodeURIComponent(`${album.artist} ${album.title}`)}`}
             isExternal
             onClick={(e) => e.stopPropagation()}
             _hover={{ textDecoration: 'none' }}
