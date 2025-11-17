@@ -4,7 +4,7 @@ import { AddIcon } from '@chakra-ui/icons';
 import { getCookie } from '../utils/cookie';
 import authFetch from '../utils/authFetch';
 
-export default function AddStudioAlbum() {
+export default function AddStudioAlbum({ onSuccess }) {
   const [id, setId] = useState('');
   const [mode, setMode] = useState('master'); // 'master' ou 'release'
   const [loading, setLoading] = useState(false);
@@ -36,6 +36,11 @@ export default function AddStudioAlbum() {
         position: 'top-right',
       });
       setId('');
+      
+      // Appeler le callback de succès si fourni
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (err) {
       toast({
         title: 'Erreur lors de l\'ajout',

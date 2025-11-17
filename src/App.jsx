@@ -778,7 +778,12 @@ function App() {
             <ModalContent>
               <ModalCloseButton />
               <ModalBody p={0}>
-                <AddStudioAlbum />
+                <AddStudioAlbum 
+                  onSuccess={() => {
+                    // Rafraîchir la liste des albums
+                    fetchAlbums(page, pageSize, artistFilter, yearRange);
+                  }}
+                />
               </ModalBody>
             </ModalContent>
           </Modal>
