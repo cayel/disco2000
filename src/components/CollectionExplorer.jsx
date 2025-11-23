@@ -22,7 +22,7 @@ import {
   ListItem,
   useColorMode,
 } from '@chakra-ui/react';
-import { RepeatIcon } from '@chakra-ui/icons';
+import { RepeatIcon, SearchIcon } from '@chakra-ui/icons';
 
 const formatLabel = (hasCd, hasVinyl) => {
   if (hasCd && hasVinyl) return 'CD & Vinyle';
@@ -44,6 +44,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
   const { colorMode } = useColorMode();
   const [search, setSearch] = useState('');
   const [selectedArtist, setSelectedArtist] = useState('');
+  const [selectedArtistIndex, setSelectedArtistIndex] = useState(-1);
 
   const artists = useMemo(() => {
     if (!Array.isArray(albums) || !albums.length) return [];
@@ -209,23 +210,133 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
         ) : (
           <Flex direction={{ base: 'column', lg: 'row' }} gap={8} align="flex-start">
             <Box w={{ base: '100%', lg: '320px' }}>
-              <InputGroup size="sm">
-                <Input
-                  placeholder="Rechercher un artiste"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                  color={colorMode === 'dark' ? 'white' : 'brand.900'}
-                  borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
-                  _hover={{ borderColor: 'accent.500' }}
-                  pr={search ? '2.5rem' : undefined}
-                />
-                {search && (
-                  <InputRightElement height="100%" pr={1}>
-                    <CloseButton size="sm" onClick={() => setSearch('')} aria-label="Effacer la recherche" />
-                  </InputRightElement>
+              <Box position="relative">
+                <InputGroup size="sm">
+                  <Input
+                    placeholder="Rechercher un artiste"
+                    value={search}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setSelectedArtistIndex(-1);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!search) return;
+                      
+                      if (e.key === 'ArrowDown' && filteredArtists.length > 0) {
+                        e.preventDefault();
+                        setSelectedArtistIndex(prev => 
+                          prev < filteredArtists.length - 1 ? prev + 1 : prev
+                        );
+                      } else if (e.key === 'ArrowUp' && filteredArtists.length > 0) {
+                        e.preventDefault();
+                        setSelectedArtistIndex(prev => prev > 0 ? prev - 1 : -1);
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (selectedArtistIndex >= 0 && filteredArtists.length > 0) {
+                          const artist = filteredArtists[selectedArtistIndex];
+                          setSelectedArtist(artist.name);
+                          setSearch(artist.name);
+                        } else if (filteredArtists.length > 0) {
+                          setSelectedArtist(filteredArtists[0].name);
+                          setSearch(filteredArtists[0].name);
+                        }
+                        setSelectedArtistIndex(-1);
+                      } else if (e.key === 'Escape') {
+                        setSelectedArtistIndex(-1);
+                      }
+                    }}
+                    bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                    color={colorMode === 'dark' ? 'white' : 'brand.900'}
+                    borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
+                    _hover={{ borderColor: 'accent.500' }}
+                    pr={search ? '2.5rem' : undefined}
+                  />
+                  {search && (
+                    <InputRightElement height="100%" pr={1}>
+                      <CloseButton 
+                        size="sm" 
+                        onClick={() => {
+                          setSearch('');
+                          setSelectedArtistIndex(-1);
+                        }} 
+                        aria-label="Effacer la recherche" 
+                      />
+                    </InputRightElement>
+                  )}
+                </InputGroup>
+                
+                {/* Bouton de recherche */}
+                {search && filteredArtists.length > 0 && !filteredArtists.some(a => a.name === selectedArtist && a.name === search) && (
+                  <Button
+                    mt={2}
+                    size="sm"
+                    leftIcon={<SearchIcon />}
+                    colorScheme="purple"
+                    variant="solid"
+                    width="full"
+                    onClick={() => {
+                      if (filteredArtists.length > 0) {
+                        setSelectedArtist(filteredArtists[0].name);
+                      }
+                      setSelectedArtistIndex(-1);
+                    }}
+                  >
+                    Sélectionner "{filteredArtists[0]?.name || search}"
+                  </Button>
                 )}
-              </InputGroup>
+                
+                {/* Liste de suggestions */}
+                {search && filteredArtists.length > 0 && search !== selectedArtist && (
+                  <Box
+                    position="absolute"
+                    top="100%"
+                    left={0}
+                    right={0}
+                    mt={1}
+                    maxH="300px"
+                    overflowY="auto"
+                    bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                    borderWidth={1}
+                    borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                    borderRadius="md"
+                    boxShadow="lg"
+                    zIndex={10}
+                  >
+                    {filteredArtists.slice(0, 10).map((artist, index) => (
+                      <Box
+                        key={artist.name}
+                        px={3}
+                        py={2}
+                        cursor="pointer"
+                        bg={
+                          index === selectedArtistIndex 
+                            ? (colorMode === 'dark' ? 'purple.600' : 'purple.100')
+                            : artist.name === selectedArtist 
+                            ? (colorMode === 'dark' ? 'purple.700' : 'purple.50') 
+                            : 'transparent'
+                        }
+                        _hover={{
+                          bg: colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100'
+                        }}
+                        onClick={() => {
+                          setSelectedArtist(artist.name);
+                          setSearch(artist.name);
+                          setSelectedArtistIndex(-1);
+                        }}
+                        transition="background 0.2s"
+                      >
+                        <Text fontSize="sm" fontWeight={artist.name === selectedArtist ? 'bold' : 'normal'}>
+                          {artist.name}
+                        </Text>
+                        <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                          {artist.ownedCount}/{artist.total} possédé{artist.ownedCount > 1 ? 's' : ''}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+              
               <Text mt={2} fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
                 {filteredArtists.length} artiste{filteredArtists.length > 1 ? 's' : ''}
               </Text>

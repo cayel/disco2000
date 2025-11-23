@@ -3,7 +3,7 @@ import authFetch from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton } from '@chakra-ui/react'
-import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, HamburgerIcon } from '@chakra-ui/icons'
+import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, HamburgerIcon, SearchIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import ProfilePage from './components/ProfilePage'
@@ -196,6 +196,7 @@ function App() {
   }, [jwt, refreshAccessToken]);
   const [artistFilter, setArtistFilter] = useState('');
   const [artistQuery, setArtistQuery] = useState('');
+  const [selectedArtistIndex, setSelectedArtistIndex] = useState(-1);
   const [yearRange, setYearRange] = useState([null, null]);
   const [appliedYearRange, setAppliedYearRange] = useState([null, null]);
   const [hasCustomYearRange, setHasCustomYearRange] = useState(false);
@@ -493,11 +494,13 @@ function App() {
       }
       return artistName;
     });
+    setArtistQuery(artistName);
     setPage(1);
   }, []);
 
   const clearArtistFilter = useCallback(() => {
     setArtistFilter('');
+    setArtistQuery('');
     setPage(1);
   }, []);
 
@@ -813,87 +816,131 @@ function App() {
                   <FormLabel fontSize="sm" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
                     Artistes
                   </FormLabel>
-                  <InputGroup size="sm">
-                    <Input
-                      placeholder="Rechercher un artiste"
-                      value={artistQuery}
-                      onChange={e => setArtistQuery(e.target.value)}
-                      bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                      color={colorMode === 'dark' ? 'white' : 'brand.900'}
-                      borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
-                      _hover={{ borderColor: 'accent.500' }}
-                      pr={artistQuery ? '2.5rem' : undefined}
-                    />
-                    {artistQuery && (
-                      <InputRightElement height="100%" pr={1}>
-                        <CloseButton size="sm" onClick={() => setArtistQuery('')} aria-label="Effacer la recherche d'artiste" />
-                      </InputRightElement>
-                    )}
-                  </InputGroup>
-                  <Text mt={2} fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
-                    {filteredArtistOptions.length} artiste{filteredArtistOptions.length > 1 ? 's' : ''} {artistQuery ? 'correspondent à la recherche' : 'disponibles'}
-                  </Text>
-                  {/* Tags Cloud */}
-                  <Box
-                    mt={3}
-                    p={3}
-                    borderWidth={1}
-                    borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
-                    borderRadius="md"
-                    maxH="320px"
-                    overflowY="auto"
-                    bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                    boxShadow="sm"
-                  >
-                    {filteredArtistOptions.length === 0 ? (
-                      <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} textAlign="center">
-                        Aucun artiste trouvé
-                      </Text>
-                    ) : (
-                      <Flex wrap="wrap" gap={2} justify="flex-start">
-                        {filteredArtistOptions.map(artist => {
-                          const isActive = artistFilter === artist.name;
-                          // Calcul de la taille en fonction du nombre d'albums
-                          const maxCount = Math.max(...filteredArtistOptions.map(a => a.count));
-                          const minCount = Math.min(...filteredArtistOptions.map(a => a.count));
-                          const range = maxCount - minCount || 1;
-                          const normalized = (artist.count - minCount) / range;
-                          // Taille de police entre 11px et 18px
-                          const fontSize = 11 + (normalized * 7);
-                          // Opacité entre 0.6 et 1
-                          const opacity = 0.6 + (normalized * 0.4);
+                  <Box position="relative">
+                    <InputGroup size="sm">
+                      <Input
+                        placeholder="Rechercher un artiste"
+                        value={artistQuery}
+                        onChange={e => {
+                          setArtistQuery(e.target.value);
+                          setSelectedArtistIndex(-1);
+                        }}
+                        onKeyDown={(e) => {
+                          if (!artistQuery) return;
                           
-                          return (
-                            <Badge
-                              key={artist.name}
-                              fontSize={`${fontSize}px`}
-                              px={3}
-                              py={1.5}
-                              borderRadius="full"
-                              cursor="pointer"
-                              opacity={1}
-                              bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : (colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100')}
-                              color={isActive ? 'white' : (colorMode === 'dark' ? 'white' : 'brand.900')}
-                              fontWeight={isActive ? 'bold' : (normalized > 0.5 ? 'semibold' : 'medium')}
-                              borderWidth={colorMode === 'dark' && !isActive ? '1px' : '0'}
-                              borderColor="whiteAlpha.300"
-                              transition="all 0.2s"
-                              _hover={{
-                                transform: 'scale(1.08)',
-                                bg: isActive ? (colorMode === 'dark' ? 'purple.600' : 'purple.200') : (colorMode === 'dark' ? 'whiteAlpha.300' : 'gray.200'),
-                                shadow: 'md',
-                                borderColor: colorMode === 'dark' ? 'whiteAlpha.400' : undefined
-                              }}
-                              onClick={() => handleArtistSelect(artist.name)}
-                              title={`${artist.count} album${artist.count > 1 ? 's' : ''}`}
-                            >
+                          if (e.key === 'ArrowDown' && filteredArtistOptions.length > 0) {
+                            e.preventDefault();
+                            setSelectedArtistIndex(prev => 
+                              prev < filteredArtistOptions.length - 1 ? prev + 1 : prev
+                            );
+                          } else if (e.key === 'ArrowUp' && filteredArtistOptions.length > 0) {
+                            e.preventDefault();
+                            setSelectedArtistIndex(prev => prev > 0 ? prev - 1 : -1);
+                          } else if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (selectedArtistIndex >= 0 && filteredArtistOptions.length > 0) {
+                              // Sélectionner l'artiste mis en surbrillance
+                              const selectedArtist = filteredArtistOptions[selectedArtistIndex];
+                              handleArtistSelect(selectedArtist.name);
+                            } else {
+                              // Rechercher avec la chaîne de caractères saisie
+                              handleArtistSelect(artistQuery);
+                            }
+                            setSelectedArtistIndex(-1);
+                          } else if (e.key === 'Escape') {
+                            setSelectedArtistIndex(-1);
+                          }
+                        }}
+                        bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                        color={colorMode === 'dark' ? 'white' : 'brand.900'}
+                        borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
+                        _hover={{ borderColor: 'accent.500' }}
+                        pr={artistQuery ? '2.5rem' : undefined}
+                      />
+                      {artistQuery && (
+                        <InputRightElement height="100%" pr={1}>
+                          <CloseButton 
+                            size="sm" 
+                            onClick={() => {
+                              setArtistQuery('');
+                              setArtistFilter('');
+                              setSelectedArtistIndex(-1);
+                            }} 
+                            aria-label="Effacer la recherche d'artiste" 
+                          />
+                        </InputRightElement>
+                      )}
+                    </InputGroup>
+                    
+                    {/* Bouton de recherche */}
+                    {artistQuery && artistQuery !== artistFilter && (
+                      <Button
+                        mt={2}
+                        size="sm"
+                        leftIcon={<SearchIcon />}
+                        colorScheme="purple"
+                        variant="solid"
+                        width="full"
+                        onClick={() => {
+                          handleArtistSelect(artistQuery);
+                          setSelectedArtistIndex(-1);
+                        }}
+                      >
+                        Rechercher "{artistQuery}"
+                      </Button>
+                    )}
+                    
+                    {/* Liste de suggestions d'artistes */}
+                    {artistQuery && artistQuery !== artistFilter && filteredArtistOptions.length > 0 && (
+                      <Box
+                        position="absolute"
+                        top="100%"
+                        left={0}
+                        right={0}
+                        mt={1}
+                        maxH="300px"
+                        overflowY="auto"
+                        bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                        borderWidth={1}
+                        borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                        borderRadius="md"
+                        boxShadow="lg"
+                        zIndex={10}
+                      >
+                        {filteredArtistOptions.map((artist, index) => (
+                          <Box
+                            key={artist.name}
+                            px={3}
+                            py={2}
+                            cursor="pointer"
+                            bg={
+                              index === selectedArtistIndex 
+                                ? (colorMode === 'dark' ? 'purple.600' : 'purple.100')
+                                : artistFilter === artist.name 
+                                ? (colorMode === 'dark' ? 'purple.700' : 'purple.50') 
+                                : 'transparent'
+                            }
+                            _hover={{
+                              bg: colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100'
+                            }}
+                            onClick={() => {
+                              handleArtistSelect(artist.name);
+                              setSelectedArtistIndex(-1);
+                            }}
+                            transition="background 0.2s"
+                          >
+                            <Text fontSize="sm" fontWeight={artistFilter === artist.name ? 'bold' : 'normal'}>
                               {artist.name}
-                            </Badge>
-                          );
-                        })}
-                      </Flex>
+                            </Text>
+                            <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                              {artist.count} album{artist.count > 1 ? 's' : ''}
+                            </Text>
+                          </Box>
+                        ))}
+                      </Box>
                     )}
                   </Box>
+                  
                   {artistFilter && (
                     <Button mt={2} size="sm" variant="link" colorScheme="purple" onClick={clearArtistFilter}>
                       Réinitialiser le filtre
@@ -1177,89 +1224,134 @@ function App() {
                     <FormLabel fontSize="sm" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
                       Artistes
                     </FormLabel>
-                    <InputGroup size="sm">
-                      <Input
-                        placeholder="Rechercher un artiste"
-                        value={artistQuery}
-                        onChange={e => setArtistQuery(e.target.value)}
-                        bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                        color={colorMode === 'dark' ? 'white' : 'brand.900'}
-                        borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
-                        _hover={{ borderColor: 'accent.500' }}
-                        pr={artistQuery ? '2.5rem' : undefined}
-                      />
-                      {artistQuery && (
-                        <InputRightElement height="100%" pr={1}>
-                          <CloseButton size="sm" onClick={() => setArtistQuery('')} aria-label="Effacer la recherche d'artiste" />
-                        </InputRightElement>
-                      )}
-                    </InputGroup>
-                    <Text mt={2} fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
-                      {filteredArtistOptions.length} artiste{filteredArtistOptions.length > 1 ? 's' : ''}
-                    </Text>
-                    {/* Tags Cloud Mobile */}
-                    <Box
-                      mt={3}
-                      p={3}
-                      borderWidth={1}
-                      borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
-                      borderRadius="md"
-                      maxH="300px"
-                      overflowY="auto"
-                      bg={colorMode === 'dark' ? 'brand.800' : 'white'}
-                      boxShadow="sm"
-                    >
-                      {filteredArtistOptions.length === 0 ? (
-                        <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} textAlign="center">
-                          Aucun artiste trouvé
-                        </Text>
-                      ) : (
-                        <Flex wrap="wrap" gap={2} justify="flex-start">
-                          {filteredArtistOptions.map(artist => {
-                            const isActive = artistFilter === artist.name;
-                            // Calcul de la taille en fonction du nombre d'albums
-                            const maxCount = Math.max(...filteredArtistOptions.map(a => a.count));
-                            const minCount = Math.min(...filteredArtistOptions.map(a => a.count));
-                            const range = maxCount - minCount || 1;
-                            const normalized = (artist.count - minCount) / range;
-                            // Taille de police entre 12px et 16px (un peu plus petit sur mobile)
-                            const fontSize = 12 + (normalized * 4);
-                            // Opacité entre 0.6 et 1
-                            const opacity = 0.6 + (normalized * 0.4);
+                    <Box position="relative">
+                      <InputGroup size="sm">
+                        <Input
+                          placeholder="Rechercher un artiste"
+                          value={artistQuery}
+                          onChange={e => {
+                            setArtistQuery(e.target.value);
+                            setSelectedArtistIndex(-1);
+                          }}
+                          onKeyDown={(e) => {
+                            if (!artistQuery) return;
                             
-                            return (
-                              <Badge
-                                key={artist.name}
-                                fontSize={`${fontSize}px`}
-                                px={3}
-                                py={2}
-                                borderRadius="full"
-                                cursor="pointer"
-                                opacity={1}
-                                bg={isActive ? (colorMode === 'dark' ? 'purple.500' : 'purple.100') : (colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100')}
-                                color={isActive ? 'white' : (colorMode === 'dark' ? 'white' : 'brand.900')}
-                                fontWeight={isActive ? 'bold' : (normalized > 0.5 ? 'semibold' : 'medium')}
-                                borderWidth={colorMode === 'dark' && !isActive ? '1px' : '0'}
-                                borderColor="whiteAlpha.300"
-                                transition="all 0.2s"
-                                _active={{
-                                  transform: 'scale(0.95)',
-                                }}
-                                onClick={() => {
-                                  handleArtistSelect(artist.name);
-                                  closeFilters();
-                                }}
-                              >
+                            if (e.key === 'ArrowDown' && filteredArtistOptions.length > 0) {
+                              e.preventDefault();
+                              setSelectedArtistIndex(prev => 
+                                prev < filteredArtistOptions.length - 1 ? prev + 1 : prev
+                              );
+                            } else if (e.key === 'ArrowUp' && filteredArtistOptions.length > 0) {
+                              e.preventDefault();
+                              setSelectedArtistIndex(prev => prev > 0 ? prev - 1 : -1);
+                            } else if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (selectedArtistIndex >= 0 && filteredArtistOptions.length > 0) {
+                                // Sélectionner l'artiste mis en surbrillance
+                                const selectedArtist = filteredArtistOptions[selectedArtistIndex];
+                                handleArtistSelect(selectedArtist.name);
+                              } else {
+                                // Rechercher avec la chaîne de caractères saisie
+                                handleArtistSelect(artistQuery);
+                              }
+                              setSelectedArtistIndex(-1);
+                              closeFilters();
+                            } else if (e.key === 'Escape') {
+                              setSelectedArtistIndex(-1);
+                            }
+                          }}
+                          bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                          color={colorMode === 'dark' ? 'white' : 'brand.900'}
+                          borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
+                          _hover={{ borderColor: 'accent.500' }}
+                          pr={artistQuery ? '2.5rem' : undefined}
+                        />
+                        {artistQuery && (
+                          <InputRightElement height="100%" pr={1}>
+                            <CloseButton 
+                              size="sm" 
+                              onClick={() => {
+                                setArtistQuery('');
+                                setArtistFilter('');
+                                setSelectedArtistIndex(-1);
+                              }} 
+                              aria-label="Effacer la recherche d'artiste" 
+                            />
+                          </InputRightElement>
+                        )}
+                      </InputGroup>
+                      
+                      {/* Bouton de recherche mobile */}
+                      {artistQuery && artistQuery !== artistFilter && (
+                        <Button
+                          mt={2}
+                          size="sm"
+                          leftIcon={<SearchIcon />}
+                          colorScheme="purple"
+                          variant="solid"
+                          width="full"
+                          onClick={() => {
+                            handleArtistSelect(artistQuery);
+                            setSelectedArtistIndex(-1);
+                            closeFilters();
+                          }}
+                        >
+                          Rechercher "{artistQuery}"
+                        </Button>
+                      )}
+                      
+                      {/* Liste de suggestions d'artistes mobile */}
+                      {artistQuery && artistQuery !== artistFilter && filteredArtistOptions.length > 0 && (
+                        <Box
+                          position="absolute"
+                          top="100%"
+                          left={0}
+                          right={0}
+                          mt={1}
+                          maxH="300px"
+                          overflowY="auto"
+                          bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                          borderWidth={1}
+                          borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                          borderRadius="md"
+                          boxShadow="lg"
+                          zIndex={10}
+                        >
+                          {filteredArtistOptions.map((artist, index) => (
+                            <Box
+                              key={artist.name}
+                              px={3}
+                              py={2}
+                              cursor="pointer"
+                              bg={
+                                index === selectedArtistIndex 
+                                  ? (colorMode === 'dark' ? 'purple.600' : 'purple.100')
+                                  : artistFilter === artist.name 
+                                  ? (colorMode === 'dark' ? 'purple.700' : 'purple.50') 
+                                  : 'transparent'
+                              }
+                              _hover={{
+                                bg: colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100'
+                              }}
+                              onClick={() => {
+                                handleArtistSelect(artist.name);
+                                setSelectedArtistIndex(-1);
+                                closeFilters();
+                              }}
+                              transition="background 0.2s"
+                            >
+                              <Text fontSize="sm" fontWeight={artistFilter === artist.name ? 'bold' : 'normal'}>
                                 {artist.name}
-                                <Text as="span" fontSize="10px" ml={1.5} opacity={0.8} fontWeight="normal">
-                                  {artist.count}
-                                </Text>
-                              </Badge>
-                            );
-                          })}
-                        </Flex>
+                              </Text>
+                              <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                                {artist.count} album{artist.count > 1 ? 's' : ''}
+                              </Text>
+                            </Box>
+                          ))}
+                        </Box>
                       )}
                     </Box>
+                    
                     {artistFilter && (
                       <Button mt={2} size="sm" variant="link" colorScheme="purple" onClick={() => { clearArtistFilter(); closeFilters(); }}>
                         Réinitialiser le filtre
