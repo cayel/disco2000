@@ -1,21 +1,23 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
 import authFetch from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton } from '@chakra-ui/react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, Stack } from '@chakra-ui/react'
 import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, HamburgerIcon, SearchIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
-import ProfilePage from './components/ProfilePage'
-import AddStudioAlbum from './components/AddStudioAlbum'
-import AlbumDetailsModal from './components/AlbumDetailsModal'
-import StudioStats from './components/StudioStats'
 import AlbumCard from './components/AlbumCard'
-import CollectionExplorer from './components/CollectionExplorer'
-import ArtistManager from './components/ArtistManager'
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
 import './App.css'
+
+// Lazy loading des composants lourds pour améliorer les performances
+const ProfilePage = lazy(() => import('./components/ProfilePage'))
+const AddStudioAlbum = lazy(() => import('./components/AddStudioAlbum'))
+const AlbumDetailsModal = lazy(() => import('./components/AlbumDetailsModal'))
+const StudioStats = lazy(() => import('./components/StudioStats'))
+const CollectionExplorer = lazy(() => import('./components/CollectionExplorer'))
+const ArtistManager = lazy(() => import('./components/ArtistManager'))
 
 function App() {
   const { isOpen, onOpen, onClose } = useDisclosure(); // pour la modale d'ajout
@@ -730,22 +732,46 @@ function App() {
         </Box>
       </Box>
       <Fade in={showProfile && !!user} unmountOnExit>
-        <ProfilePage onLogout={() => setShowProfile(false)} onBack={() => setShowProfile(false)} />
+        <Suspense fallback={
+          <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Spinner size="xl" color="purple.500" thickness="4px" />
+          </Box>
+        }>
+          <ProfilePage onLogout={() => setShowProfile(false)} onBack={() => setShowProfile(false)} />
+        </Suspense>
       </Fade>
       <Fade in={showStats && !showProfile} unmountOnExit>
-        <StudioStats />
+        <Suspense fallback={
+          <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Spinner size="xl" color="purple.500" thickness="4px" />
+          </Box>
+        }>
+          <StudioStats />
+        </Suspense>
       </Fade>
       <Fade in={showCollection && isUser && !showProfile && !showStats && !showArtistManager} unmountOnExit>
-        <CollectionExplorer
-          albums={allAlbums}
-          loading={allAlbumsLoading}
-          error={allAlbumsError}
-          onRefresh={refreshAllData}
-          isUser={isUser}
-        />
+        <Suspense fallback={
+          <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Spinner size="xl" color="purple.500" thickness="4px" />
+          </Box>
+        }>
+          <CollectionExplorer
+            albums={allAlbums}
+            loading={allAlbumsLoading}
+            error={allAlbumsError}
+            onRefresh={refreshAllData}
+            isUser={isUser}
+          />
+        </Suspense>
       </Fade>
       <Fade in={showArtistManager && isContributor && !showProfile && !showStats && !showCollection} unmountOnExit>
-        <ArtistManager />
+        <Suspense fallback={
+          <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Spinner size="xl" color="purple.500" thickness="4px" />
+          </Box>
+        }>
+          <ArtistManager />
+        </Suspense>
       </Fade>
       <Fade in={!showProfile && !showStats && !showCollection && !showArtistManager} unmountOnExit>
         <Box
@@ -781,12 +807,18 @@ function App() {
             <ModalContent>
               <ModalCloseButton />
               <ModalBody p={0}>
-                <AddStudioAlbum 
-                  onSuccess={() => {
-                    // Rafraîchir la liste des albums
-                    fetchAlbums(page, pageSize, artistFilter, yearRange);
-                  }}
-                />
+                <Suspense fallback={
+                  <Box p={8} display="flex" alignItems="center" justifyContent="center">
+                    <Spinner size="lg" color="purple.500" thickness="3px" />
+                  </Box>
+                }>
+                  <AddStudioAlbum 
+                    onSuccess={() => {
+                      // Rafraîchir la liste des albums
+                      fetchAlbums(page, pageSize, artistFilter, yearRange);
+                    }}
+                  />
+                </Suspense>
               </ModalBody>
             </ModalContent>
           </Modal>
@@ -809,9 +841,9 @@ function App() {
               Filtres {activeFiltersCount > 0 && `(${activeFiltersCount})`}
             </Button>
 
-            <Box display="flex" flexDirection={{ base: 'column', md: 'row' }} gap={8}>
+            <Box display="flex" flexDirection={{ base: 'column', md: 'row' }} gap={8} w="100%">
               {/* Sidebar des filtres à gauche (masqué sur mobile) */}
-              <Box w={{ base: '100%', md: '320px' }} mb={{ base: 8, md: 0 }} display={{ base: 'none', md: 'block' }}>
+              <Box w={{ base: '100%', md: '320px' }} minW={{ md: '320px' }} maxW={{ md: '320px' }} mb={{ base: 8, md: 0 }} display={{ base: 'none', md: 'block' }} flexShrink={0}>
                 <FormControl mb={4}>
                   <FormLabel fontSize="sm" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
                     Artistes
@@ -1005,7 +1037,7 @@ function App() {
                 </FormControl>
               </Box>
               {/* Grille d'albums à droite */}
-              <Box flex={1}>
+              <Box w={{ base: '100%', md: 'calc(100% - 320px - 2rem)' }} flexShrink={0}>
                 <Box display="flex" flexDirection="column" gap={4}>
                   <Box
                     borderWidth={1}
@@ -1064,7 +1096,8 @@ function App() {
                       justify="space-between"
                       gap={3}
                     >
-                      <ButtonGroup size={{ base: 'md', md: 'sm' }} isAttached variant="outline" colorScheme="purple">
+                      <Flex gap={2} align="center">
+                        <ButtonGroup size={{ base: 'md', md: 'sm' }} isAttached variant="outline" colorScheme="purple">
                         <Button
                           onClick={goToFirstPage}
                           isDisabled={!canGoPrev}
@@ -1099,13 +1132,15 @@ function App() {
                           Dernière
                         </Button>
                       </ButtonGroup>
+                      </Flex>
+                      
                       <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'} textAlign={{ base: 'center', sm: 'right' }}>
                         {albums.length} affiché{albums.length > 1 ? 's' : ''} sur cette page
                       </Text>
                     </Flex>
                   </Box>
 
-                  <Box position="relative">
+                  <Box position="relative" w="100%">
                     {albumsLoading && (
                       <Flex
                         position="absolute"
@@ -1120,9 +1155,10 @@ function App() {
                         <Spinner size="lg" thickness="4px" speed="0.6s" color="purple.400" />
                       </Flex>
                     )}
-                    <SimpleGrid columns={albumsPerRow} spacing={{ base: 3, md: 2 }} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px">
-                      {albums.length === 0 ? (
-                        [...Array(albumsPerRow)].map((_, i) => (
+                    
+                    <SimpleGrid columns={albumsPerRow} spacing={{ base: 3, md: 2 }} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px" w="100%">
+                        {albums.length === 0 ? (
+                          [...Array(albumsPerRow)].map((_, i) => (
                           <Box
                             key={`empty-skel-${i}`}
                             position="relative"
@@ -1406,19 +1442,21 @@ function App() {
             </Drawer>
 
             {/* Fenêtre modale de détails d'album */}
-            <AlbumDetailsModal
-              albumId={selectedAlbumId}
-              isOpen={isDetailsOpen}
-              onClose={() => {
-                setSelectedAlbumId(null);
-                closeDetails();
-              }}
-              isContributor={isContributor}
-              isUser={isUser}
-              refreshAlbums={refreshCurrentPage}
-              onCollectionUpdate={handleCollectionUpdate}
-              onAlbumDelete={handleAlbumDelete}
-            />
+            <Suspense fallback={null}>
+              <AlbumDetailsModal
+                albumId={selectedAlbumId}
+                isOpen={isDetailsOpen}
+                onClose={() => {
+                  setSelectedAlbumId(null);
+                  closeDetails();
+                }}
+                isContributor={isContributor}
+                isUser={isUser}
+                refreshAlbums={refreshCurrentPage}
+                onCollectionUpdate={handleCollectionUpdate}
+                onAlbumDelete={handleAlbumDelete}
+              />
+            </Suspense>
             </>
           )}
           </Box>
