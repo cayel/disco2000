@@ -1203,48 +1203,61 @@ function App() {
                       gap={3}
                     >
                       <Flex gap={2} align="center">
-                        <ButtonGroup size={{ base: 'md', md: 'sm' }} isAttached variant="ghost" colorScheme="gray">
-                        <Button
-                          onClick={goToFirstPage}
-                          isDisabled={!canGoPrev}
-                          leftIcon={<ArrowLeftIcon />}
-                          display={{ base: 'none', sm: 'flex' }}
-                            variant="ghost"
+                        {/* Pagination compacte avec numéros et flèches */}
+                        <ButtonGroup size={{ base: 'sm', md: 'sm' }} variant="ghost" colorScheme="gray" isAttached={false}>
+                          <IconButton
+                            aria-label="Page précédente"
+                            icon={<ChevronLeftIcon />}
+                            onClick={goToPrevPage}
+                            isDisabled={!canGoPrev}
+                            borderRadius="full"
                             _hover={{ bg: colorMode === 'dark' ? 'whiteAlpha.100' : 'gray.100' }}
-                        >
-                          Première
-                        </Button>
-                        <Button
-                          onClick={goToPrevPage}
-                          isDisabled={!canGoPrev}
-                          leftIcon={<ChevronLeftIcon />}
-                          minW={{ base: '44px', md: 'auto' }}
-                            variant="ghost"
+                          />
+                          {(() => {
+                            const items = [];
+                            const start = Math.max(1, page - 2);
+                            const end = Math.min(totalPages, page + 2);
+                            if (start > 1) {
+                              items.push(
+                                <Button key="first" size="sm" onClick={() => setPage(1)} borderRadius="full" variant="ghost">1</Button>
+                              );
+                              if (start > 2) {
+                                items.push(<Text key="dots-left" px={1} color={colorMode==='dark'?'gray.400':'gray.600'}>…</Text>);
+                              }
+                            }
+                            for (let p = start; p <= end; p++) {
+                              items.push(
+                                <Button
+                                  key={`p-${p}`}
+                                  size="sm"
+                                  onClick={() => setPage(p)}
+                                  borderRadius="full"
+                                  variant={p === page ? 'solid' : 'ghost'}
+                                  colorScheme={p === page ? 'brand' : 'gray'}
+                                >
+                                  {p}
+                                </Button>
+                              );
+                            }
+                            if (end < totalPages) {
+                              if (end < totalPages - 1) {
+                                items.push(<Text key="dots-right" px={1} color={colorMode==='dark'?'gray.400':'gray.600'}>…</Text>);
+                              }
+                              items.push(
+                                <Button key="last" size="sm" onClick={() => setPage(totalPages)} borderRadius="full" variant="ghost">{totalPages}</Button>
+                              );
+                            }
+                            return items;
+                          })()}
+                          <IconButton
+                            aria-label="Page suivante"
+                            icon={<ChevronRightIcon />}
+                            onClick={goToNextPage}
+                            isDisabled={!canGoNext}
+                            borderRadius="full"
                             _hover={{ bg: colorMode === 'dark' ? 'whiteAlpha.100' : 'gray.100' }}
-                        >
-                          <Text display={{ base: 'none', sm: 'inline' }}>Précédent</Text>
-                        </Button>
-                        <Button
-                          onClick={goToNextPage}
-                          isDisabled={!canGoNext}
-                          rightIcon={<ChevronRightIcon />}
-                            variant="ghost"
-                          minW={{ base: '44px', md: 'auto' }}
-                            _hover={{ bg: colorMode === 'dark' ? 'whiteAlpha.100' : 'gray.100' }}
-                        >
-                          <Text display={{ base: 'none', sm: 'inline' }}>Suivant</Text>
-                        </Button>
-                        <Button
-                          onClick={goToLastPage}
-                          isDisabled={!canGoNext}
-                          rightIcon={<ArrowRightIcon />}
-                          display={{ base: 'none', sm: 'flex' }}
-                            variant="ghost"
-                            _hover={{ bg: colorMode === 'dark' ? 'whiteAlpha.100' : 'gray.100' }}
-                        >
-                          Dernière
-                        </Button>
-                      </ButtonGroup>
+                          />
+                        </ButtonGroup>
                       </Flex>
                       
                       <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'} textAlign={{ base: 'center', sm: 'right' }}>
