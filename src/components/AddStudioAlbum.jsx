@@ -85,7 +85,7 @@ export default function AddStudioAlbum({ onSuccess }) {
           onChange={e => setId(e.target.value)}
           placeholder={mode === 'master' ? 'ex : 123456 (master)' : 'ex : 654321 (release)'}
           min={1}
-          bg={colorMode === 'dark' ? 'brand.900' : 'white'}
+          bg={colorMode === 'dark' ? 'slate.900' : 'white'}
           borderColor={colorMode === 'dark' ? 'purple.900' : 'purple.200'}
           _focus={{ borderColor: 'purple.400', boxShadow: '0 0 0 1px #9f7aea' }}
           fontWeight="medium"

@@ -125,8 +125,8 @@ function CountrySelector({ value, onChange, placeholder = 'Rechercher un pays...
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          bg={colorMode === 'dark' ? 'brand.900' : 'white'}
-          borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+          bg={colorMode === 'dark' ? 'slate.900' : 'white'}
+          borderColor={colorMode === 'dark' ? 'slate.700' : 'gray.200'}
           _focus={{
             borderColor: 'purple.500',
             boxShadow: '0 0 0 1px var(--chakra-colors-purple-500)',
@@ -154,9 +154,9 @@ function CountrySelector({ value, onChange, placeholder = 'Rechercher un pays...
           left={0}
           right={0}
           mt={1}
-          bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+          bg={colorMode === 'dark' ? 'slate.800' : 'white'}
           borderWidth={1}
-          borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+          borderColor={colorMode === 'dark' ? 'slate.700' : 'gray.200'}
           borderRadius="md"
           boxShadow="lg"
           maxH="300px"

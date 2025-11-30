@@ -22,11 +22,9 @@ export default function CollectionStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { colorMode } = useColorMode();
-  const containerBg = colorMode === 'dark' ? 'rgba(35, 37, 38, 0.92)' : 'white';
-  const cardBg = colorMode === 'dark' ? 'whiteAlpha.100' : 'gray.50';
-  const highlightGradient = colorMode === 'dark'
-    ? 'linear(to-r, purple.500, cyan.400)'
-    : 'linear(to-r, purple.400, pink.300)';
+  const containerBg = colorMode === 'dark' ? 'slate.900' : 'white';
+  const cardBg = colorMode === 'dark' ? 'rgba(255,255,255,0.06)' : 'gray.50';
+  const accentColor = colorMode === 'dark' ? 'brand.200' : 'brand.700';
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_API_URL;
@@ -83,7 +81,7 @@ export default function CollectionStats() {
     >
       <Stack spacing={6}>
         <Box>
-          <Heading as="h2" size="lg" color={colorMode === 'dark' ? 'purple.200' : 'purple.700'}>
+          <Heading as="h2" size="lg" color={colorMode === 'dark' ? 'brand.300' : 'brand.600'}>
             Statistiques de ma collection
           </Heading>
           <Text mt={2} color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>
@@ -99,41 +97,35 @@ export default function CollectionStats() {
           <Text color="red.400">{error}</Text>
         ) : stats ? (
           <Stack spacing={8}>
-            <Box
-              bgGradient={highlightGradient}
-              color="white"
-              borderRadius="2xl"
-              p={{ base: 6, md: 8 }}
-              boxShadow="lg"
-            >
-              <Text fontSize="sm" textTransform="uppercase" letterSpacing="widest" opacity={0.8} mb={2}>
+            <Box borderRadius="2xl" p={{ base: 6, md: 8 }} boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
+              <Text fontSize="sm" textTransform="uppercase" letterSpacing="widest" color={colorMode==='dark'?'gray.400':'gray.600'} mb={3}>
                 Capacité totale
               </Text>
               <Flex align={{ base: 'flex-start', md: 'center' }} justify="space-between" gap={6} wrap="wrap">
                 <Stat minW={0}>
-                  <StatLabel fontSize="lg" color="whiteAlpha.900">
+                  <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>
                     Nombre total de disques
                   </StatLabel>
-                  <StatNumber fontSize={{ base: '4xl', md: '5xl' }} fontWeight="extrabold">
+                  <StatNumber fontSize={{ base: '4xl', md: '5xl' }} fontWeight="extrabold" color={accentColor}>
                     {totalDiscs || 'N/A'}
                   </StatNumber>
-                  <StatHelpText color="whiteAlpha.900">
+                  <StatHelpText color={colorMode==='dark'?'gray.300':'gray.500'}>
                     {totalCd} CD • {totalVinyl} vinyles
                   </StatHelpText>
                 </Stat>
                 {totalDiscs > 0 && (
                   <Box flex="1" minW="240px">
-                    <Text fontWeight="semibold" mb={2}>
+                    <Text fontWeight="semibold" mb={2} color={colorMode==='dark'?'slate.200':'slate.800'}>
                       Répartition des formats
                     </Text>
                     <Stack spacing={3}>
-                      {distribution.map(({ label, value, percent, color }) => (
+                      {distribution.map(({ label, value, percent }) => (
                         <Box key={label}>
                           <Flex justify="space-between" fontSize="sm" mb={1}>
-                            <Text>{label}</Text>
-                            <Text fontWeight="semibold">{value} • {percent}%</Text>
+                            <Text color={colorMode==='dark'?'slate.300':'slate.700'}>{label}</Text>
+                            <Text fontWeight="semibold" color={accentColor}>{value} • {percent}%</Text>
                           </Flex>
-                          <Progress value={percent} colorScheme={color} size="sm" borderRadius="full" />
+                          <Progress value={percent} colorScheme="brand" size="sm" borderRadius="full" />
                         </Box>
                       ))}
                     </Stack>
@@ -143,23 +135,23 @@ export default function CollectionStats() {
             </Box>
 
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
-                <StatLabel fontSize="lg">Nombre de CD</StatLabel>
-                <StatNumber fontSize="3xl" color={colorMode === 'dark' ? 'purple.200' : 'purple.600'}>
+              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
+                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Nombre de CD</StatLabel>
+                <StatNumber fontSize="3xl" color={accentColor}>
                   {totalCd || 'N/A'}
                 </StatNumber>
               </Stat>
 
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
-                <StatLabel fontSize="lg">Nombre de vinyles</StatLabel>
-                <StatNumber fontSize="3xl" color={colorMode === 'dark' ? 'pink.200' : 'pink.500'}>
+              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
+                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Nombre de vinyles</StatLabel>
+                <StatNumber fontSize="3xl" color={accentColor}>
                   {totalVinyl || 'N/A'}
                 </StatNumber>
               </Stat>
 
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
-                <StatLabel fontSize="lg">Artiste le plus représenté</StatLabel>
-                <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'cyan.200' : 'purple.700'}>
+              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
+                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Artiste le plus représenté</StatLabel>
+                <StatNumber fontSize="2xl" color={accentColor}>
                   {stats.top_artist ?? 'N/A'}
                 </StatNumber>
                 {stats.top_artist_count && (
@@ -169,9 +161,9 @@ export default function CollectionStats() {
                 )}
               </Stat>
 
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
-                <StatLabel fontSize="lg">Année la plus représentée</StatLabel>
-                <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'teal.200' : 'teal.600'}>
+              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
+                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Année la plus représentée</StatLabel>
+                <StatNumber fontSize="2xl" color={accentColor}>
                   {stats.top_year ?? 'N/A'}
                 </StatNumber>
                 {stats.top_year_count && (
@@ -182,18 +174,18 @@ export default function CollectionStats() {
               </Stat>
 
               {stats.most_recent_added && (
-                <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
+                <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
                   <StatLabel fontSize="lg">Dernier ajout</StatLabel>
-                  <StatNumber fontSize="lg" noOfLines={2} color={colorMode === 'dark' ? 'orange.200' : 'orange.500'}>
+                  <StatNumber fontSize="lg" noOfLines={2} color={accentColor}>
                     {stats.most_recent_added}
                   </StatNumber>
                 </Stat>
               )}
 
               {stats.collection_value && (
-                <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
+                <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
                   <StatLabel fontSize="lg">Valeur estimée</StatLabel>
-                  <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'yellow.200' : 'yellow.500'}>
+                  <StatNumber fontSize="2xl" color={accentColor}>
                     {stats.collection_value}
                   </StatNumber>
                 </Stat>

@@ -32,7 +32,7 @@ export default function AlbumsPerYearChart({ albums = [], yearData = [] }) {
   const gridColor = isDark ? '#4b436a' : '#e2e8f0';
 
   return (
-    <Box w="100%" minW="320px" h="340px" minH="240px" maxW="1100px" mx="auto" my={8} bg={isDark ? 'brand.900' : 'white'} p={0} borderRadius="lg" boxShadow="md" position="relative">
+  <Box w="100%" minW="320px" h="340px" minH="240px" maxW="1100px" mx="auto" my={8} bg={isDark ? 'slate.900' : 'white'} p={0} borderRadius="lg" boxShadow="md" position="relative">
       {hasData ? (
         <ResponsiveContainer width="100%" height="100%" minWidth={320} minHeight={240} aspect={2.8}>
           <BarChart data={data} margin={{ top: 24, right: 24, left: 24, bottom: 24 }}>

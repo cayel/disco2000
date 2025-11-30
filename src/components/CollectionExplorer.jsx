@@ -159,7 +159,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
     <Box
       minH="100vh"
       pb={{ base: 24, md: 12 }}
-      bg={colorMode === 'dark' ? 'brand.900' : '#f7f7fa'}
+  bg={colorMode === 'dark' ? 'slate.900' : '#f7f7fa'}
     >
       <Box
         w="100%"
@@ -245,9 +245,9 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
                         setSelectedArtistIndex(-1);
                       }
                     }}
-                    bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                    bg={colorMode === 'dark' ? 'slate.800' : 'white'}
                     color={colorMode === 'dark' ? 'white' : 'brand.900'}
-                    borderColor={colorMode === 'dark' ? 'brand.700' : 'brand.900'}
+                    borderColor={colorMode === 'dark' ? 'slate.700' : 'brand.900'}
                     _hover={{ borderColor: 'accent.500' }}
                     pr={search ? '2.5rem' : undefined}
                   />
@@ -295,9 +295,9 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
                     mt={1}
                     maxH="300px"
                     overflowY="auto"
-                    bg={colorMode === 'dark' ? 'brand.800' : 'white'}
+                    bg={colorMode === 'dark' ? 'slate.800' : 'white'}
                     borderWidth={1}
-                    borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                    borderColor={colorMode === 'dark' ? 'slate.700' : 'gray.200'}
                     borderRadius="md"
                     boxShadow="lg"
                     zIndex={10}
@@ -343,7 +343,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
               <Box
                 mt={2}
                 borderWidth={1}
-                borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                borderColor={colorMode === 'dark' ? 'slate.700' : 'gray.200'}
                 borderRadius="md"
                 maxH="320px"
                 overflowY="auto"

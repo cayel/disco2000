@@ -204,14 +204,14 @@ function ArtistManager() {
     }
   };
 
-  const containerBg = colorMode === 'dark' ? 'brand.800' : 'white';
-  const headerBg = colorMode === 'dark' ? 'brand.700' : 'gray.50';
+  const containerBg = colorMode === 'dark' ? 'slate.800' : 'white';
+  const headerBg = colorMode === 'dark' ? 'slate.700' : 'gray.50';
 
   return (
     <Box
       minH="100vh"
       pb={{ base: 24, md: 12 }}
-      bg={colorMode === 'dark' ? 'brand.900' : '#f7f7fa'}
+  bg={colorMode === 'dark' ? 'slate.900' : '#f7f7fa'}
     >
       <Box
         w="100%"
