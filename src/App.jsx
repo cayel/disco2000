@@ -1,8 +1,9 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
 import authFetch from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, Stack } from '@chakra-ui/react'
+import { debounce } from './utils/debounce';
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense, useRef } from 'react'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, Stack, chakra } from '@chakra-ui/react'
 import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, HamburgerIcon, SearchIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
@@ -198,6 +199,8 @@ function App() {
   }, [jwt, refreshAccessToken]);
   const [artistFilter, setArtistFilter] = useState('');
   const [artistQuery, setArtistQuery] = useState('');
+  const [artistSuggestions, setArtistSuggestions] = useState([]);
+  const [isSearchingArtists, setIsSearchingArtists] = useState(false);
   const [selectedArtistIndex, setSelectedArtistIndex] = useState(-1);
   const [yearRange, setYearRange] = useState([null, null]);
   const [appliedYearRange, setAppliedYearRange] = useState([null, null]);
@@ -392,33 +395,100 @@ function App() {
     refreshCurrentPage();
   }, [refreshCurrentPage]);
 
-  // Mémorisation de la liste des artistes avec leur nombre d'albums
-  const artistsWithCount = useMemo(() => {
-    const source = allAlbums.length ? allAlbums : albums;
-    const artistMap = new Map();
-    source.forEach(album => {
-      if (!album) return;
-      const rawArtist = typeof album.artist === 'string' ? album.artist : album.artist?.name;
-      if (rawArtist) {
-        artistMap.set(rawArtist, (artistMap.get(rawArtist) || 0) + 1);
+  // Recherche d'artistes via l'API
+  const searchArtistsAPI = useCallback(async (query) => {
+    const trimmed = (query || '').trim();
+    // Autoriser dès 1 caractère
+    if (!trimmed || trimmed.length < 1) {
+      setArtistSuggestions([]);
+      setIsSearchingArtists(false);
+      return;
+    }
+
+    setIsSearchingArtists(true);
+    const apiBase = import.meta.env.VITE_API_URL;
+    
+    try {
+      const res = await authFetch(
+        `${apiBase}/api/artists/search?q=${encodeURIComponent(trimmed)}&limit=20`,
+        { method: 'GET' },
+        { label: 'search-artists' }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Erreur API (${res.status})`);
       }
-    });
-    return Array.from(artistMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count); // Tri par popularité décroissante
+
+      const data = await res.json();
+      // Debug structure (à retirer en prod si bruit) :
+      console.log('[searchArtistsAPI] Réponse brute:', data);
+      let rawList = [];
+      if (Array.isArray(data.artists)) rawList = data.artists;
+      else if (Array.isArray(data.results)) rawList = data.results;
+      else if (Array.isArray(data.items)) rawList = data.items;
+      else if (Array.isArray(data.data)) rawList = data.data;
+      else if (Array.isArray(data)) rawList = data;
+
+      // Normalisation des objets artistes
+      let apiArtists = rawList.map(a => {
+        const name = a.name || a.artist_name || a.title || a.nom || '';
+        const albumCount = a.album_count ?? a.albums_count ?? a.count ?? a.total_albums ?? 0;
+        return { name, album_count: albumCount };
+      }).filter(a => a.name && a.name.toLowerCase().includes(trimmed.toLowerCase()));
+
+      // Fallback local si API vide mais on dispose des albums
+      if (apiArtists.length === 0 && (allAlbums.length || albums.length)) {
+        const localMap = new Map();
+        const source = allAlbums.length ? allAlbums : albums;
+        source.forEach(alb => {
+          const name = typeof alb.artist === 'string' ? alb.artist : alb.artist?.name;
+          if (!name) return;
+          if (name.toLowerCase().includes(trimmed.toLowerCase())) {
+            localMap.set(name, (localMap.get(name) || 0) + 1);
+          }
+        });
+        apiArtists = Array.from(localMap.entries()).map(([name, album_count]) => ({ name, album_count }));
+        // Trier par nombre décroissant
+        apiArtists.sort((a, b) => b.album_count - a.album_count);
+      }
+
+      setArtistSuggestions(apiArtists);
+      console.log('[searchArtistsAPI] Suggestions normalisées:', apiArtists);
+    } catch (err) {
+      console.error('Erreur recherche artistes:', err);
+      setArtistSuggestions([]);
+    } finally {
+      setIsSearchingArtists(false);
+    }
   }, [allAlbums, albums]);
 
-  const uniqueArtists = useMemo(() => {
-    return artistsWithCount.map(a => a.name);
-  }, [artistsWithCount]);
+  // Surlignage de la portion recherchée (insensible à la casse)
+  const highlightArtistName = useCallback((name, query) => {
+    if (!query) return name;
+    const q = query.trim();
+    if (!q) return name;
+    const lowerName = name.toLowerCase();
+    const lowerQ = q.toLowerCase();
+    const idx = lowerName.indexOf(lowerQ);
+    if (idx === -1) return name;
+    const before = name.slice(0, idx);
+    const match = name.slice(idx, idx + q.length);
+    const after = name.slice(idx + q.length);
+    return (
+      <>
+        {before}
+        <chakra.span px="1" borderRadius="sm" bg={colorMode === 'dark' ? 'purple.700' : 'purple.200'} fontWeight="semibold">
+          {match}
+        </chakra.span>
+        {after}
+      </>
+    );
+  }, [colorMode]);
 
-  const filteredArtistOptions = useMemo(() => {
-    if (!artistQuery) {
-      return artistsWithCount;
-    }
-    const normalizedQuery = artistQuery.trim().toLowerCase();
-    return artistsWithCount.filter(artist => artist.name.toLowerCase().includes(normalizedQuery));
-  }, [artistQuery, artistsWithCount]);
+  // Debounce pour éviter trop de requêtes API
+  const debouncedSearchArtists = useRef(
+    debounce((query) => searchArtistsAPI(query), 300)
+  ).current;
 
   const availableYears = useMemo(() => {
     const source = allAlbums.length ? allAlbums : albums;
@@ -497,12 +567,16 @@ function App() {
       return artistName;
     });
     setArtistQuery(artistName);
+    setArtistSuggestions([]); // Fermer les suggestions
+    setSelectedArtistIndex(-1);
     setPage(1);
   }, []);
 
   const clearArtistFilter = useCallback(() => {
     setArtistFilter('');
     setArtistQuery('');
+    setArtistSuggestions([]);
+    setSelectedArtistIndex(-1);
     setPage(1);
   }, []);
 
@@ -854,33 +928,36 @@ function App() {
                         placeholder="Rechercher un artiste"
                         value={artistQuery}
                         onChange={e => {
-                          setArtistQuery(e.target.value);
+                          const query = e.target.value;
+                          setArtistQuery(query);
                           setSelectedArtistIndex(-1);
+                          // Appel debounced à l'API
+                          debouncedSearchArtists(query);
                         }}
                         onKeyDown={(e) => {
                           if (!artistQuery) return;
                           
-                          if (e.key === 'ArrowDown' && filteredArtistOptions.length > 0) {
+                          if (e.key === 'ArrowDown' && artistSuggestions.length > 0) {
                             e.preventDefault();
                             setSelectedArtistIndex(prev => 
-                              prev < filteredArtistOptions.length - 1 ? prev + 1 : prev
+                              prev < artistSuggestions.length - 1 ? prev + 1 : prev
                             );
-                          } else if (e.key === 'ArrowUp' && filteredArtistOptions.length > 0) {
+                          } else if (e.key === 'ArrowUp' && artistSuggestions.length > 0) {
                             e.preventDefault();
                             setSelectedArtistIndex(prev => prev > 0 ? prev - 1 : -1);
                           } else if (e.key === 'Enter') {
                             e.preventDefault();
-                            if (selectedArtistIndex >= 0 && filteredArtistOptions.length > 0) {
+                            if (selectedArtistIndex >= 0 && artistSuggestions.length > 0) {
                               // Sélectionner l'artiste mis en surbrillance
-                              const selectedArtist = filteredArtistOptions[selectedArtistIndex];
+                              const selectedArtist = artistSuggestions[selectedArtistIndex];
                               handleArtistSelect(selectedArtist.name);
                             } else {
                               // Rechercher avec la chaîne de caractères saisie
                               handleArtistSelect(artistQuery);
                             }
-                            setSelectedArtistIndex(-1);
                           } else if (e.key === 'Escape') {
                             setSelectedArtistIndex(-1);
+                            setArtistSuggestions([]);
                           }
                         }}
                         bg={colorMode === 'dark' ? 'brand.800' : 'white'}
@@ -894,12 +971,15 @@ function App() {
                           <CloseButton 
                             size="sm" 
                             onClick={() => {
-                              setArtistQuery('');
-                              setArtistFilter('');
-                              setSelectedArtistIndex(-1);
+                              clearArtistFilter();
                             }} 
                             aria-label="Effacer la recherche d'artiste" 
                           />
+                        </InputRightElement>
+                      )}
+                      {isSearchingArtists && (
+                        <InputRightElement height="100%" pr={artistQuery ? '2.5rem' : '0.5rem'}>
+                          <Spinner size="sm" color="purple.500" />
                         </InputRightElement>
                       )}
                     </InputGroup>
@@ -923,7 +1003,7 @@ function App() {
                     )}
                     
                     {/* Liste de suggestions d'artistes */}
-                    {artistQuery && artistQuery !== artistFilter && filteredArtistOptions.length > 0 && (
+                    {artistQuery && artistQuery !== artistFilter && (
                       <Box
                         position="absolute"
                         top="100%"
@@ -939,7 +1019,22 @@ function App() {
                         boxShadow="lg"
                         zIndex={10}
                       >
-                        {filteredArtistOptions.map((artist, index) => (
+                        {isSearchingArtists && artistSuggestions.length === 0 && (
+                          <Box px={3} py={2}>
+                            <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>Recherche...</Text>
+                          </Box>
+                        )}
+                        {!isSearchingArtists && artistSuggestions.length === 0 && (
+                          <Box px={3} py={3}>
+                            <Text fontSize="sm" fontWeight="semibold" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                              Aucun artiste trouvé
+                            </Text>
+                            <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.500' : 'gray.500'}>
+                              Essaie une autre orthographe
+                            </Text>
+                          </Box>
+                        )}
+                        {artistSuggestions.map((artist, index) => (
                           <Box
                             key={artist.name}
                             px={3}
@@ -962,10 +1057,7 @@ function App() {
                             transition="background 0.2s"
                           >
                             <Text fontSize="sm" fontWeight={artistFilter === artist.name ? 'bold' : 'normal'}>
-                              {artist.name}
-                            </Text>
-                            <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
-                              {artist.count} album{artist.count > 1 ? 's' : ''}
+                              {highlightArtistName(artist.name, artistQuery)}
                             </Text>
                           </Box>
                         ))}
@@ -1266,34 +1358,37 @@ function App() {
                           placeholder="Rechercher un artiste"
                           value={artistQuery}
                           onChange={e => {
-                            setArtistQuery(e.target.value);
+                            const query = e.target.value;
+                            setArtistQuery(query);
                             setSelectedArtistIndex(-1);
+                            // Appel debounced à l'API
+                            debouncedSearchArtists(query);
                           }}
                           onKeyDown={(e) => {
                             if (!artistQuery) return;
                             
-                            if (e.key === 'ArrowDown' && filteredArtistOptions.length > 0) {
+                            if (e.key === 'ArrowDown' && artistSuggestions.length > 0) {
                               e.preventDefault();
                               setSelectedArtistIndex(prev => 
-                                prev < filteredArtistOptions.length - 1 ? prev + 1 : prev
+                                prev < artistSuggestions.length - 1 ? prev + 1 : prev
                               );
-                            } else if (e.key === 'ArrowUp' && filteredArtistOptions.length > 0) {
+                            } else if (e.key === 'ArrowUp' && artistSuggestions.length > 0) {
                               e.preventDefault();
                               setSelectedArtistIndex(prev => prev > 0 ? prev - 1 : -1);
                             } else if (e.key === 'Enter') {
                               e.preventDefault();
-                              if (selectedArtistIndex >= 0 && filteredArtistOptions.length > 0) {
+                              if (selectedArtistIndex >= 0 && artistSuggestions.length > 0) {
                                 // Sélectionner l'artiste mis en surbrillance
-                                const selectedArtist = filteredArtistOptions[selectedArtistIndex];
+                                const selectedArtist = artistSuggestions[selectedArtistIndex];
                                 handleArtistSelect(selectedArtist.name);
                               } else {
                                 // Rechercher avec la chaîne de caractères saisie
                                 handleArtistSelect(artistQuery);
                               }
-                              setSelectedArtistIndex(-1);
                               closeFilters();
                             } else if (e.key === 'Escape') {
                               setSelectedArtistIndex(-1);
+                              setArtistSuggestions([]);
                             }
                           }}
                           bg={colorMode === 'dark' ? 'brand.800' : 'white'}
@@ -1313,6 +1408,11 @@ function App() {
                               }} 
                               aria-label="Effacer la recherche d'artiste" 
                             />
+                          </InputRightElement>
+                        )}
+                        {isSearchingArtists && (
+                          <InputRightElement height="100%" pr={artistQuery ? '2.5rem' : '0.5rem'}>
+                            <Spinner size="sm" color="purple.500" />
                           </InputRightElement>
                         )}
                       </InputGroup>
@@ -1336,8 +1436,8 @@ function App() {
                         </Button>
                       )}
                       
-                      {/* Liste de suggestions d'artistes mobile */}
-                      {artistQuery && artistQuery !== artistFilter && filteredArtistOptions.length > 0 && (
+                      {/* Liste de suggestions d'artistes mobile (depuis API) */}
+                      {artistQuery && artistQuery !== artistFilter && (
                         <Box
                           position="absolute"
                           top="100%"
@@ -1353,7 +1453,22 @@ function App() {
                           boxShadow="lg"
                           zIndex={10}
                         >
-                          {filteredArtistOptions.map((artist, index) => (
+                          {isSearchingArtists && artistSuggestions.length === 0 && (
+                            <Box px={3} py={2}>
+                              <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>Recherche...</Text>
+                            </Box>
+                          )}
+                          {!isSearchingArtists && artistSuggestions.length === 0 && (
+                            <Box px={3} py={3}>
+                              <Text fontSize="sm" fontWeight="semibold" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                                Aucun artiste trouvé
+                              </Text>
+                              <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.500' : 'gray.500'}>
+                                Essaie une autre orthographe
+                              </Text>
+                            </Box>
+                          )}
+                          {artistSuggestions.map((artist, index) => (
                             <Box
                               key={artist.name}
                               px={3}
@@ -1377,10 +1492,7 @@ function App() {
                               transition="background 0.2s"
                             >
                               <Text fontSize="sm" fontWeight={artistFilter === artist.name ? 'bold' : 'normal'}>
-                                {artist.name}
-                              </Text>
-                              <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
-                                {artist.count} album{artist.count > 1 ? 's' : ''}
+                                {highlightArtistName(artist.name, artistQuery)}
                               </Text>
                             </Box>
                           ))}
