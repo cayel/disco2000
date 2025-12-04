@@ -25,6 +25,7 @@ import CollectionStats from './CollectionStats';
 import AlbumsPerYearChart from './AlbumsPerYearChart';
 import CountryDistribution from './CountryDistribution';
 import authFetch from '../utils/authFetch';
+import GenresDistribution from './GenresDistribution';
 
 export default function StudioStats() {
   const jwt = getCookie('jwt');
@@ -34,6 +35,7 @@ export default function StudioStats() {
   const [allAlbums, setAllAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingAlbums, setLoadingAlbums] = useState(true);
+  const [genresStats, setGenresStats] = useState({ genres: [], styles: [] });
   const [error, setError] = useState(null);
   const { colorMode } = useColorMode();
   const containerBg = colorMode === 'dark' ? 'rgba(24, 28, 36, 0.92)' : 'white';
@@ -49,6 +51,10 @@ export default function StudioStats() {
       })
       .then(data => {
         setPublicStats(data);
+        // Essayer d'extraire des stats de genres/styles si déjà présentes
+        const genres = data.genres || data.genres_stats || [];
+        const styles = data.styles || data.styles_stats || [];
+        setGenresStats({ genres, styles });
         setLoading(false);
       })
       .catch(err => {
@@ -100,6 +106,80 @@ export default function StudioStats() {
     };
     fetchAllArtists();
   }, []);
+
+  // Récupération dédiée des stats genres/styles si non fournies par /albums/stats
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_URL;
+    const fetchGenres = async () => {
+      try {
+        const res = await authFetch(`${apiBase}/api/statistics/genres-styles`, { method: 'GET' }, { label: 'genres-stats' });
+        if (!res.ok) return; // rester discret si non disponible
+        const data = await res.json().catch(() => ({}));
+        const genres = Array.isArray(data.genres) ? data.genres : [];
+        const styles = Array.isArray(data.styles) ? data.styles : [];
+        setGenresStats(prev => ({
+          genres: Array.isArray(genres) && genres.length ? genres : prev.genres,
+          styles: Array.isArray(styles) && styles.length ? styles : prev.styles,
+        }));
+      } catch {/* noop */}
+    };
+    const fetchGenresFromAlbums = async () => {
+      // Fallback: agréger genres/styles en parcourant les albums si l'endpoint dédié n'existe pas
+      try {
+        const pageSize = 100;
+        let page = 1;
+        let totalPages = 1;
+        const genresMap = new Map();
+        const stylesMap = new Map();
+        do {
+          const params = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
+          const res = await authFetch(`${apiBase}/api/albums?${params.toString()}`, { method: 'GET' }, { label: `albums-page-${page}` });
+          if (!res.ok) break;
+          const data = await res.json().catch(() => ({}));
+          const pageAlbums = Array.isArray(data.albums) ? data.albums : [];
+          const serverTotal = Number.isFinite(data.total) ? data.total : pageAlbums.length;
+          const serverPageSize = Number.isFinite(data.page_size) ? data.page_size : pageSize;
+          totalPages = Math.max(1, Math.ceil(serverTotal / serverPageSize));
+          // Agrégation
+          for (const alb of pageAlbums) {
+            const genres = Array.isArray(alb.genres) ? alb.genres : (alb.genre ? [alb.genre] : []);
+            const styles = Array.isArray(alb.styles) ? alb.styles : (alb.style ? [alb.style] : []);
+            for (const g of genres) {
+              const key = String(g || '').trim();
+              if (!key) continue;
+              genresMap.set(key, (genresMap.get(key) || 0) + 1);
+            }
+            for (const s of styles) {
+              const key = String(s || '').trim();
+              if (!key) continue;
+              stylesMap.set(key, (stylesMap.get(key) || 0) + 1);
+            }
+          }
+          page += 1;
+        } while (page <= totalPages);
+
+        const aggregatedGenres = Array.from(genresMap.entries()).map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count).slice(0, 10);
+        const aggregatedStyles = Array.from(stylesMap.entries()).map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count).slice(0, 10);
+        if (aggregatedGenres.length || aggregatedStyles.length) {
+          setGenresStats({ genres: aggregatedGenres, styles: aggregatedStyles });
+        }
+      } catch {/* noop */}
+    };
+    // Ne requêter que si on n'a rien
+    if ((!genresStats.genres || genresStats.genres.length === 0) || (!genresStats.styles || genresStats.styles.length === 0)) {
+      fetchGenres();
+      // Et fallback si toujours vide après un court délai
+      setTimeout(() => {
+        const stillEmpty = (!genresStats.genres || genresStats.genres.length === 0) || (!genresStats.styles || genresStats.styles.length === 0);
+        if (stillEmpty) {
+          fetchGenresFromAlbums();
+        }
+      }, 300);
+    }
+  }, [genresStats.genres, genresStats.styles]);
+ 
 
   const yearDistribution = useMemo(() => {
     if (!publicStats?.albums_per_year?.length) return [];
@@ -286,6 +366,8 @@ export default function StudioStats() {
                       <CountryDistribution artists={allAlbums} />
                     )}
                   </Box>
+
+                  <GenresDistribution genres={genresStats.genres} styles={genresStats.styles} />
                 </Stack>
               ) : (
                 <Text color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>
