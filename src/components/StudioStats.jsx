@@ -22,10 +22,12 @@ import {
   Progress,
 } from '@chakra-ui/react';
 import CollectionStats from './CollectionStats';
-import AlbumsPerYearChart from './AlbumsPerYearChart';
+// import AlbumsPerYearChart from './AlbumsPerYearChart';
 import CountryDistribution from './CountryDistribution';
 import authFetch from '../utils/authFetch';
 import GenresDistribution from './GenresDistribution';
+import YearHeatmap from './YearHeatmap';
+import CompactCountryDistribution from './CompactCountryDistribution';
 
 export default function StudioStats() {
   const jwt = getCookie('jwt');
@@ -353,17 +355,15 @@ export default function StudioStats() {
                     </Stat>
                   </SimpleGrid>
                   
-                  <Box p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow="md" bg={cardBg}>
-                    <AlbumsPerYearChart yearData={publicStats.albums_per_year || []} />
-                  </Box>
+                  <YearHeatmap yearData={publicStats.albums_per_year || []} />
                   
-                  <Box p={{ base: 4, md: 6 }} borderRadius="xl" boxShadow="md" bg={cardBg}>
+                  <Box p={{ base: 3, md: 4 }} borderRadius="xl" boxShadow="md" bg={cardBg}>
                     {loadingAlbums ? (
-                      <Flex justify="center" align="center" minH="200px">
-                        <Spinner size="md" color="purple.500" />
+                      <Flex justify="center" align="center" minH="120px">
+                        <Spinner size="sm" color="brand.500" />
                       </Flex>
                     ) : (
-                      <CountryDistribution artists={allAlbums} />
+                      <CompactCountryDistribution artists={allAlbums} maxItems={12} initialLimit={5} />
                     )}
                   </Box>
 
