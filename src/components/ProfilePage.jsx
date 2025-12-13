@@ -55,6 +55,8 @@ export default function ProfilePage({ onLogout }) {
         <Button colorScheme="red" onClick={() => { signOut(auth); deleteCookie('jwt'); deleteCookie('refresh_token'); window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null })); onLogout && onLogout(); }}>Se déconnecter</Button>
       </Stack>
         </Box>
+
+        {/* Le formulaire de création de liste a été déplacé vers un menu dédié */}
       </Box>
     </Box>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, Box, Text, Image, Spinner, Badge, Stack, Tag, TagLabel, Wrap, WrapItem, Button, useToast, Checkbox, Flex } from '@chakra-ui/react';
+import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, Box, Text, Image, Spinner, Badge, Stack, Tag, TagLabel, Wrap, WrapItem, Button, useToast, Checkbox, Flex, Input } from '@chakra-ui/react';
 
 import { getCookie, deleteCookie } from '../utils/cookie';
 import { isJwtExpired } from '../utils/jwt';
@@ -30,6 +30,13 @@ export default function AlbumDetailsModal({
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const toast = useToast();
+  // États pour l'ajout à une liste
+  const [lists, setLists] = useState([]);
+  const [listsLoading, setListsLoading] = useState(false);
+  const [listsError, setListsError] = useState(null);
+  const [selectedListId, setSelectedListId] = useState(null); // single list id (string)
+  const [filterQuery, setFilterQuery] = useState('');
+  const [listsPage, setListsPage] = useState(1); // pagination page for long lists
   // Synchroniser les cases à cocher avec la collection de l'album
   useEffect(() => {
     if (!isUserConnected) return;
@@ -96,6 +103,26 @@ export default function AlbumDetailsModal({
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [isOpen, albumId, jwt]);
+
+  // Charger les listes de l'utilisateur pour le sélecteur "Ajouter à une liste"
+  useEffect(() => {
+    if (!isOpen || !jwt || !isUser) return;
+    setListsLoading(true);
+    setListsError(null);
+    setLists([]);
+    authFetch(`${import.meta.env.VITE_API_URL}/api/lists`, { method: 'GET' }, { label: 'lists-for-modal' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Erreur lors du chargement des listes');
+        const data = await res.json().catch(() => []);
+  setLists(Array.isArray(data) ? data : []);
+  // Réinitialiser la sélection
+  setSelectedListId(null);
+  setFilterQuery('');
+  setListsPage(1);
+      })
+      .catch((err) => setListsError(err.message || 'Erreur réseau'))
+      .finally(() => setListsLoading(false));
+  }, [isOpen, jwt, isUser]);
 
   const handleDelete = async () => {
     if (!albumId || !jwt || !isContributor) return;
@@ -197,6 +224,8 @@ export default function AlbumDetailsModal({
                     </Button>
                   </Box>
                 ) : null}
+
+                {/* Ajout à une liste déplacé sur la carte album (AlbumCard) pour un flux plus discret et direct */}
               </Box>
             </Stack>
           )}

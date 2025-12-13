@@ -1,5 +1,7 @@
-import { memo } from 'react';
-import { Box, Image, Heading, Badge, Text, Tooltip, IconButton, Link } from '@chakra-ui/react';
+import { memo, useState } from 'react';
+import { Box, Image, Heading, Badge, Text, Tooltip, IconButton, Link, Popover, PopoverTrigger, PopoverContent, PopoverArrow, PopoverBody, Input, Stack, Flex, useToast, Portal } from '@chakra-ui/react';
+import authFetch from '../utils/authFetch';
+import { getCookie } from '../utils/cookie';
 
 // Icônes pour CD et vinyle
 const CdIcon = (props) => (
@@ -72,6 +74,137 @@ const AlbumCard = memo(({ album, index, colorMode, isUser, onClick }) => {
       : 'Dans ta collection (Vinyle)'
   ) : '';
 
+  const toast = useToast();
+  const [listsOpen, setListsOpen] = useState(false);
+  const [lists, setLists] = useState([]);
+  const [listsLoading, setListsLoading] = useState(false);
+  const [listsError, setListsError] = useState(null);
+  const [filterQuery, setFilterQuery] = useState('');
+  const [addingListId, setAddingListId] = useState(null);
+  const [presentMap, setPresentMap] = useState({}); // { [listId]: boolean }
+  const [hydratingPresence, setHydratingPresence] = useState(false);
+
+  const loadLists = async () => {
+    const jwt = getCookie('jwt');
+    if (!jwt || !isUser) return;
+    setListsLoading(true);
+    setListsError(null);
+    try {
+      const res = await authFetch(`${import.meta.env.VITE_API_URL}/api/lists`, { method: 'GET' }, { label: 'albumcard-lists' });
+      if (!res.ok) throw new Error('Erreur lors du chargement des listes');
+      const data = await res.json().catch(() => []);
+      setLists(Array.isArray(data) ? data : []);
+      // Hydrater la présence pour les premières listes visibles (évite de marquer manuellement)
+      const albumId = album?.id ?? album?.album_id;
+      if (albumId && Array.isArray(data) && data.length > 0) {
+        setHydratingPresence(true);
+        const pageSize = 30;
+        const pageItems = data.slice(0, pageSize);
+        const checks = pageItems.map(async (l) => {
+          try {
+            const r = await authFetch(`${import.meta.env.VITE_API_URL}/api/lists/${l.id}/albums`, { method: 'GET' }, { label: 'albumcard-membership' });
+            if (!r.ok) return { id: l.id, present: false };
+            const albums = await r.json().catch(() => []);
+            const present = Array.isArray(albums) && albums.some(a => String(a.album_id) === String(albumId));
+            return { id: l.id, present };
+          } catch {
+            return { id: l.id, present: false };
+          }
+        });
+        const results = await Promise.allSettled(checks);
+        const map = {};
+        results.forEach(res => {
+          if (res.status === 'fulfilled' && res.value) {
+            map[res.value.id] = res.value.present;
+          }
+        });
+        setPresentMap(prev => ({ ...prev, ...map }));
+        setHydratingPresence(false);
+      }
+    } catch (err) {
+      setListsError(err.message || 'Erreur réseau');
+    } finally {
+      setListsLoading(false);
+    }
+  };
+
+  const addToList = async (listId, listTitle) => {
+    try {
+      const albumId = album?.id ?? album?.album_id;
+      if (!albumId) throw new Error("Identifiant d'album manquant");
+      setAddingListId(listId);
+      const res = await authFetch(`${import.meta.env.VITE_API_URL}/api/lists/${listId}/albums`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ album_id: albumId })
+      }, { label: `albumcard-add-${listId}` });
+      if (!res.ok) {
+        // Essayer de lire un message JSON propre si disponible
+        let msg = 'Erreur lors de l\'ajout';
+        if (res.status === 409) {
+          // Conflit: probablement déjà présent
+          setPresentMap(prev => ({ ...prev, [listId]: true }));
+          toast({ title: 'Déjà dans la liste', description: listTitle ? `“${album.title}” est déjà présent dans ${listTitle}` : undefined, status: 'info', duration: 2500, position: 'top-right' });
+          return;
+        }
+        try {
+          const data = await res.json();
+          if (data && (data.message || data.error)) msg = data.message || data.error;
+          else {
+            const txt = await res.text();
+            if (txt) msg = txt;
+          }
+        } catch (_) {
+          const txt = await res.text().catch(() => '');
+          if (txt) msg = txt;
+        }
+        throw new Error(msg || `Erreur ${res.status}`);
+      }
+      toast({ title: 'Ajouté à la liste', description: listTitle ? `“${album.title}” → ${listTitle}` : undefined, status: 'success', duration: 2500, position: 'top-right' });
+      setPresentMap(prev => ({ ...prev, [listId]: true }));
+      setListsOpen(false);
+    } catch (err) {
+      toast({ title: 'Ajout impossible', description: err.message || 'Erreur réseau', status: 'error', duration: 3500, position: 'top-right' });
+    }
+    finally {
+      setAddingListId(null);
+    }
+  };
+
+  const removeFromList = async (listId, listTitle) => {
+    try {
+      const albumId = album?.id ?? album?.album_id;
+      if (!albumId) throw new Error("Identifiant d'album manquant");
+      setAddingListId(listId);
+      const res = await authFetch(`${import.meta.env.VITE_API_URL}/api/lists/${listId}/albums/${albumId}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      }, { label: `albumcard-remove-${listId}` });
+      if (res.status === 204) {
+        toast({ title: 'Retiré de la liste', description: listTitle ? `“${album.title}” ← ${listTitle}` : undefined, status: 'success', duration: 2500, position: 'top-right' });
+        setPresentMap(prev => ({ ...prev, [listId]: false }));
+        return;
+      }
+      let msg = 'Erreur lors du retrait';
+      try {
+        const data = await res.json();
+        if (data && (data.message || data.error)) msg = data.message || data.error;
+        else {
+          const txt = await res.text();
+          if (txt) msg = txt;
+        }
+      } catch (_) {
+        const txt = await res.text().catch(() => '');
+        if (txt) msg = txt;
+      }
+      throw new Error(msg || `Erreur ${res.status}`);
+    } catch (err) {
+      toast({ title: 'Retrait impossible', description: err.message || 'Erreur réseau', status: 'error', duration: 3500, position: 'top-right' });
+    } finally {
+      setAddingListId(null);
+    }
+  };
+
   return (
     <Box
       key={album.id ? album.id : `${album.title}-${album.year}-${index}`}
@@ -85,6 +218,7 @@ const AlbumCard = memo(({ album, index, colorMode, isUser, onClick }) => {
       cursor="pointer"
       transition="all 0.3s"
       onClick={onClick}
+      role="group"
     >
       {album.cover_url && (
         <Box position="relative" w="100%" h="100%">
@@ -124,8 +258,98 @@ const AlbumCard = memo(({ album, index, colorMode, isUser, onClick }) => {
               </Box>
             </Tooltip>
           )}
+          {/* Bouton discret d'ajout à une liste - placé au-dessus de l'image pour être toujours visible */}
+          {isUser && (
+            <Box
+              position="absolute"
+              top={2}
+              left={2}
+              zIndex={3}
+              onClick={(e) => e.stopPropagation()}
+              opacity={0}
+              transition="opacity 0.2s"
+              _groupHover={{ opacity: 1 }}
+            >
+              <Popover isOpen={listsOpen} onClose={() => setListsOpen(false)} placement="right-start" closeOnBlur={true} closeOnEsc={true}>
+                <PopoverTrigger>
+                  <Tooltip label="Ajouter à une liste" hasArrow>
+                    <IconButton
+                      aria-label="Ajouter à une liste"
+                      size="xs"
+                      variant="solid"
+                      colorScheme="brand"
+                      icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4h4a2 2 0 0 1 2 2v3h3a2 2 0 1 1 0 4h-3v3a2 2 0 1 1-4 0v-3H9a2 2 0 1 1 0-4h3V6a2 2 0 0 1-2-2z"/></svg>}
+                      onClick={(e) => { e.stopPropagation(); setFilterQuery(''); setListsOpen(true); loadLists(); }}
+                    />
+                  </Tooltip>
+                </PopoverTrigger>
+                <Portal>
+                  <PopoverContent w="260px" zIndex={1500}>
+                    <PopoverArrow />
+                    <PopoverBody>
+                    {listsLoading ? (
+                      <Flex align="center" gap={2}><Badge>Chargement…</Badge></Flex>
+                    ) : listsError ? (
+                      <Text fontSize="xs" color="red.500">{listsError}</Text>
+                    ) : (
+                      <Box>
+                        <Input size="xs" placeholder="Rechercher une liste…" value={filterQuery} onChange={(e) => setFilterQuery(e.target.value)} mb={2} />
+                        <Box maxH="200px" overflowY="auto">
+                          <Stack spacing={1}>
+                            {(() => {
+                              const q = filterQuery.trim().toLowerCase();
+                              const filtered = q ? lists.filter(l => String(l.title || '').toLowerCase().includes(q)) : lists;
+                              const pageSize = 30;
+                              const pageItems = filtered.slice(0, pageSize);
+                              return (
+                                <>
+                                  {pageItems.map(l => (
+                                    <Flex
+                                      key={l.id}
+                                      align="center"
+                                      justify="space-between"
+                                      px={2}
+                                      py={1}
+                                      borderRadius="md"
+                                      _hover={{ bg: 'gray.50' }}
+                                      cursor="pointer"
+                                      role="button"
+                                      tabIndex={0}
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToList(l.id, l.title); }}
+                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); addToList(l.id, l.title); } }}
+                                    >
+                                      <Flex align="center" gap={2}>
+                                        {presentMap[l.id] === true && (
+                                          <Badge colorScheme="green" variant="solid" fontSize="0.6rem">✓</Badge>
+                                        )}
+                                        {hydratingPresence && typeof presentMap[l.id] === 'undefined' && (
+                                          <Badge colorScheme="gray" variant="subtle" fontSize="0.6rem">…</Badge>
+                                        )}
+                                        <Text fontSize="xs" noOfLines={1}>{l.title}</Text>
+                                      </Flex>
+                                      {presentMap[l.id] === true ? (
+                                        <IconButton aria-label="Retirer" size="xs" variant="ghost" colorScheme="red" onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeFromList(l.id, l.title); }} icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h12M9 9v9m6-9v9"/></svg>} isLoading={addingListId === l.id} />
+                                      ) : (
+                                        <IconButton aria-label="Ajouter" size="xs" variant="ghost" onClick={(e) => { e.preventDefault(); e.stopPropagation(); addToList(l.id, l.title); }} icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5v14m-7-7h14"/></svg>} isLoading={addingListId === l.id} />
+                                      )}
+                                    </Flex>
+                                  ))}
+                                </>
+                              );
+                            })()}
+                          </Stack>
+                        </Box>
+                      </Box>
+                    )}
+                    </PopoverBody>
+                  </PopoverContent>
+                </Portal>
+              </Popover>
+            </Box>
+          )}
         </Box>
       )}
+      {/* Overlay d'info au survol */}
       <Box
         position="absolute"
         top={0}

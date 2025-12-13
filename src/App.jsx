@@ -19,6 +19,7 @@ const AlbumDetailsModal = lazy(() => import('./components/AlbumDetailsModal'))
 const StudioStats = lazy(() => import('./components/StudioStats'))
 const CollectionExplorer = lazy(() => import('./components/CollectionExplorer'))
 const ArtistManager = lazy(() => import('./components/ArtistManager'))
+const ListsManager = lazy(() => import('./components/ListsManager'))
 
 function App() {
   const { isOpen, onOpen, onClose } = useDisclosure(); // pour la modale d'ajout
@@ -44,6 +45,7 @@ function App() {
   const [showStats, setShowStats] = useState(false);
   const [showCollection, setShowCollection] = useState(false);
   const [showArtistManager, setShowArtistManager] = useState(false);
+  const [showLists, setShowLists] = useState(false);
   const [jwt, setJwt] = useState(() => {
     const token = getCookie('jwt');
     if (!token) return null;
@@ -706,7 +708,7 @@ function App() {
           >
             Disco 2000
           </Heading>
-          {activeFiltersCount > 0 && !showStats && !showProfile && !showCollection && (
+          {activeFiltersCount > 0 && !showStats && !showProfile && !showCollection && !showLists && (
             <Badge
               colorScheme="purple"
               variant="solid"
@@ -722,7 +724,7 @@ function App() {
         </Flex>
         <Box display={{ base: 'none', md: 'flex' }} alignItems="center" gap={2}>
           <Button
-            variant={!showStats && !showProfile && !showCollection && !showArtistManager ? 'solid' : 'ghost'}
+            variant={!showStats && !showProfile && !showCollection && !showArtistManager && !showLists ? 'solid' : 'ghost'}
             size="sm"
             colorScheme="brand"
             onClick={() => {
@@ -730,6 +732,7 @@ function App() {
               setShowProfile(false);
               setShowCollection(false);
               setShowArtistManager(false);
+              setShowLists(false);
             }}
             fontWeight="bold"
             px={3}
@@ -745,6 +748,7 @@ function App() {
               setShowProfile(false);
               setShowCollection(false);
               setShowArtistManager(false);
+              setShowLists(false);
             }}
             fontWeight="bold"
             px={3}
@@ -761,11 +765,30 @@ function App() {
                 setShowStats(false);
                 setShowProfile(false);
                 setShowArtistManager(false);
+                setShowLists(false);
               }}
               fontWeight="bold"
               px={3}
             >
               Ma collection
+            </Button>
+          ) : null}
+          {isUser && user && jwt ? (
+            <Button
+              variant={showLists && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
+              size="sm"
+              colorScheme="brand"
+              onClick={() => {
+                setShowLists(true);
+                setShowCollection(false);
+                setShowStats(false);
+                setShowProfile(false);
+                setShowArtistManager(false);
+              }}
+              fontWeight="bold"
+              px={3}
+            >
+              Listes
             </Button>
           ) : null}
           {isContributor && user && jwt ? (
@@ -778,6 +801,7 @@ function App() {
                 setShowCollection(false);
                 setShowStats(false);
                 setShowProfile(false);
+                setShowLists(false);
               }}
               fontWeight="bold"
               px={3}
@@ -801,6 +825,7 @@ function App() {
                 setShowStats(false);
                 setShowCollection(false);
                 setShowArtistManager(false);
+                setShowLists(false);
               }}
               title={user.displayName || user.email || 'Mon profil'}
             />
@@ -861,7 +886,17 @@ function App() {
           <ArtistManager />
         </Suspense>
       </Fade>
-      <Fade in={!showProfile && !showStats && !showCollection && !showArtistManager} unmountOnExit>
+      <Fade in={showLists && isUser && !showProfile && !showStats && !showCollection && !showArtistManager} unmountOnExit>
+        <Suspense fallback={
+          <Box minH="100vh" display="flex" alignItems="center" justifyContent="center">
+            <Spinner size="xl" color="purple.500" thickness="4px" />
+              <Spinner size="xl" color="brand.500" thickness="4px" />
+          </Box>
+        }>
+          <ListsManager />
+        </Suspense>
+      </Fade>
+      <Fade in={!showProfile && !showStats && !showCollection && !showArtistManager && !showLists} unmountOnExit>
         <Box
           minH="100vh"
           pb={{ base: 24, md: 12 }}
@@ -1630,13 +1665,14 @@ function App() {
             flexDirection="column"
             height="auto"
             py={2}
-            colorScheme={!showStats && !showProfile && !showCollection && !showArtistManager ? 'brand' : 'gray'}
-            variant={!showStats && !showProfile && !showCollection && !showArtistManager ? 'solid' : 'ghost'}
+            colorScheme={!showStats && !showProfile && !showCollection && !showArtistManager && !showLists ? 'brand' : 'gray'}
+            variant={!showStats && !showProfile && !showCollection && !showArtistManager && !showLists ? 'solid' : 'ghost'}
             onClick={() => {
               setShowStats(false);
               setShowProfile(false);
               setShowCollection(false);
               setShowArtistManager(false);
+              setShowLists(false);
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1656,6 +1692,7 @@ function App() {
               setShowProfile(false);
               setShowCollection(false);
               setShowArtistManager(false);
+                setShowLists(false);
             }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1664,25 +1701,49 @@ function App() {
             <Text fontSize="xs" mt={1}>Stats</Text>
           </Button>
           {isUser && user && jwt ? (
-            <Button
-              flex={1}
-              flexDirection="column"
-              height="auto"
-              py={2}
-              colorScheme={showCollection && !showProfile && !showArtistManager ? 'purple' : 'gray'}
-              variant={showCollection && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
-              onClick={() => {
-                setShowCollection(true);
-                setShowStats(false);
-                setShowProfile(false);
-                setShowArtistManager(false);
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-              </svg>
-              <Text fontSize="xs" mt={1}>Collection</Text>
-            </Button>
+            <>
+              <Button
+                flex={1}
+                flexDirection="column"
+                height="auto"
+                py={2}
+                colorScheme={showCollection && !showProfile && !showArtistManager ? 'purple' : 'gray'}
+                variant={showCollection && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
+                onClick={() => {
+                  setShowCollection(true);
+                  setShowStats(false);
+                  setShowProfile(false);
+                  setShowArtistManager(false);
+                  setShowLists(false);
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                </svg>
+                <Text fontSize="xs" mt={1}>Collection</Text>
+              </Button>
+
+              <Button
+                flex={1}
+                flexDirection="column"
+                height="auto"
+                py={2}
+                colorScheme={showLists && !showProfile && !showArtistManager ? 'purple' : 'gray'}
+                variant={showLists && !showProfile && !showArtistManager ? 'solid' : 'ghost'}
+                onClick={() => {
+                  setShowLists(true);
+                  setShowCollection(false);
+                  setShowStats(false);
+                  setShowProfile(false);
+                  setShowArtistManager(false);
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                </svg>
+                <Text fontSize="xs" mt={1}>Listes</Text>
+              </Button>
+            </>
           ) : null}
           {isContributor && user && jwt ? (
             <Button
@@ -1697,6 +1758,7 @@ function App() {
                 setShowCollection(false);
                 setShowStats(false);
                 setShowProfile(false);
+                setShowLists(false);
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1718,6 +1780,7 @@ function App() {
                 setShowStats(false);
                 setShowCollection(false);
                 setShowArtistManager(false);
+                setShowLists(false);
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
