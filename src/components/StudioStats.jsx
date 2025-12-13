@@ -22,11 +22,11 @@ import {
   Progress,
 } from '@chakra-ui/react';
 import CollectionStats from './CollectionStats';
-// import AlbumsPerYearChart from './AlbumsPerYearChart';
+import AlbumsPerYearChart from './AlbumsPerYearChart';
 import CountryDistribution from './CountryDistribution';
 import authFetch from '../utils/authFetch';
 import GenresDistribution from './GenresDistribution';
-import YearHeatmap from './YearHeatmap';
+// import YearHeatmap from './YearHeatmap';
 import CompactCountryDistribution from './CompactCountryDistribution';
 
 export default function StudioStats() {
@@ -355,7 +355,12 @@ export default function StudioStats() {
                     </Stat>
                   </SimpleGrid>
                   
-                  <YearHeatmap yearData={publicStats.albums_per_year || []} />
+                  <Box borderRadius="xl" p={{ base: 3, md: 4 }} boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
+                    <Text fontSize="sm" mb={2} color={colorMode==='dark' ? 'gray.400' : 'gray.600'}>
+                      Albums par année
+                    </Text>
+                    <AlbumsPerYearChart yearData={publicStats.albums_per_year || []} />
+                  </Box>
                   
                   <Box p={{ base: 3, md: 4 }} borderRadius="xl" boxShadow="md" bg={cardBg}>
                     {loadingAlbums ? (

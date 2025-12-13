@@ -1,5 +1,5 @@
-import { Box, useColorMode, Text } from '@chakra-ui/react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Label } from 'recharts';
+import { Box, useColorMode, Text, Flex } from '@chakra-ui/react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Label, Brush } from 'recharts';
 
 // Permet désormais de recevoir soit une liste d'albums (legacy) soit un tableau agrégé yearData [{year, count}].
 export default function AlbumsPerYearChart({ albums = [], yearData = [] }) {
@@ -45,6 +45,7 @@ export default function AlbumsPerYearChart({ albums = [], yearData = [] }) {
             </YAxis>
             <Tooltip contentStyle={{ background: chartBg, color: chartFg, borderRadius: 8, border: 'none' }} cursor={{ fill: isDark ? '#322659' : '#e9d8fd', opacity: 0.2 }} />
             <Bar dataKey="count" fill="#805ad5" radius={[4, 4, 0, 0]} />
+            <Brush dataKey="year" height={20} stroke={isDark ? '#e9d8fd' : '#2d3748'} travellerWidth={8} />
           </BarChart>
         </ResponsiveContainer>
       ) : (
