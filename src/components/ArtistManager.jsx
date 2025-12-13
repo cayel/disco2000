@@ -58,6 +58,7 @@ function ArtistManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArtist, setSelectedArtist] = useState(null);
   const [countryInput, setCountryInput] = useState('');
+  const [nameInput, setNameInput] = useState('');
   const [updating, setUpdating] = useState(false);
 
   // Récupération de la liste des artistes
@@ -122,6 +123,7 @@ function ArtistManager() {
     setSelectedArtist(artist);
     // Le champ country est maintenant un code ISO 2 lettres
     setCountryInput(artist.country || '');
+    setNameInput(artist.name || '');
     onOpen();
   };
 
@@ -129,13 +131,18 @@ function ArtistManager() {
   const handleUpdateArtist = async () => {
     if (!selectedArtist) return;
 
-    // Le CountrySelector retourne déjà un code valide, mais vérification de sécurité
+    // Préparer les champs à mettre à jour
     const normalizedCountry = countryInput.trim().toUpperCase();
-    if (!normalizedCountry) {
+    const trimmedName = nameInput.trim();
+    const payload = {};
+    if (normalizedCountry) payload.country = normalizedCountry;
+    if (trimmedName && trimmedName !== selectedArtist.name) payload.name = trimmedName;
+
+    if (Object.keys(payload).length === 0) {
       toast({
-        title: 'Pays requis',
-        description: 'Veuillez sélectionner un pays',
-        status: 'warning',
+        title: 'Aucun changement',
+        description: 'Modifiez le nom ou le pays avant d’enregistrer',
+        status: 'info',
         duration: 3000,
         isClosable: true,
       });
@@ -152,7 +159,7 @@ function ArtistManager() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ country: normalizedCountry }),
+          body: JSON.stringify(payload),
         },
         { label: 'update-artist' }
       );
@@ -176,14 +183,23 @@ function ArtistManager() {
       // Récupérer les données mises à jour depuis la réponse
       const updatedArtist = await response.json();
 
-      // Mise à jour locale avec les données complètes (country et country_name)
+      // Mise à jour locale avec les données complètes (name, country et country_name)
       setArtists(prev =>
         prev.map(a => (a.id === selectedArtist.id ? { ...a, ...updatedArtist } : a))
       );
 
       toast({
         title: 'Succès',
-        description: `Le pays de ${selectedArtist.name} a été mis à jour vers ${updatedArtist.country_name || normalizedCountry}`,
+        description: (() => {
+          const changes = [];
+          if (payload.name) {
+            changes.push(`Nom mis à jour: “${updatedArtist.name}”`);
+          }
+          if (payload.country) {
+            changes.push(`Pays mis à jour: ${updatedArtist.country_name || payload.country}`);
+          }
+          return changes.join(' • ');
+        })(),
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -347,9 +363,18 @@ function ArtistManager() {
           <ModalBody>
             {selectedArtist && (
               <>
-                <Text mb={4} fontWeight="bold" color={colorMode === 'dark' ? 'white' : 'brand.900'}>
-                  {selectedArtist.name}
-                </Text>
+                <FormControl mb={4}>
+                  <FormLabel color={colorMode === 'dark' ? 'gray.300' : 'gray.700'}>
+                    Nom de l'artiste
+                  </FormLabel>
+                  <Input
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    placeholder="Entrez le nom"
+                    bg={colorMode === 'dark' ? 'brand.900' : 'white'}
+                    borderColor={colorMode === 'dark' ? 'brand.700' : 'gray.200'}
+                  />
+                </FormControl>
                 {selectedArtist.country_name && (
                   <Text mb={3} fontSize="sm" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
                     Pays actuel : <Badge colorScheme="purple" ml={1}>{selectedArtist.country}</Badge> {selectedArtist.country_name}
