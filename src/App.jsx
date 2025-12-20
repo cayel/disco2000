@@ -1,16 +1,19 @@
 import { decodeJwt, isJwtExpired } from './utils/jwt';
-import authFetch from './utils/authFetch';
+import authFetch, { forceRefresh } from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { debounce } from './utils/debounce';
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense, useRef } from 'react'
-import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, Stack, chakra } from '@chakra-ui/react'
+import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, Stack, chakra, useToast } from '@chakra-ui/react'
 import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, HamburgerIcon, SearchIcon } from '@chakra-ui/icons'
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
+import SessionExpiredBanner from './components/SessionExpiredBanner'
+import SessionStatusBadge from './components/SessionStatusBadge'
 import AlbumCard from './components/AlbumCard'
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
 import './App.css'
+import TokenService from './utils/tokenService'
 
 // Lazy loading des composants lourds pour améliorer les performances
 const ProfilePage = lazy(() => import('./components/ProfilePage'))
@@ -22,6 +25,7 @@ const ArtistManager = lazy(() => import('./components/ArtistManager'))
 const ListsManager = lazy(() => import('./components/ListsManager'))
 
 function App() {
+  const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure(); // pour la modale d'ajout
   const {
     isOpen: isDetailsOpen,
@@ -54,6 +58,7 @@ function App() {
     }
     return token;
   });
+  const [showExpiredBanner, setShowExpiredBanner] = useState(false);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -64,63 +69,26 @@ function App() {
   const [allAlbumsError, setAllAlbumsError] = useState(null);
 
   const jwtPayload = useMemo(() => (jwt ? decodeJwt(jwt) : null), [jwt]);
-
-  const refreshAccessToken = useCallback(async () => {
-    const refreshToken = getCookie('refresh_token');
-    if (!refreshToken) return null;
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/users/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-KEY': import.meta.env.VITE_API_KEY,
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-      if (!response.ok) throw new Error('Refresh failed');
-      const data = await response.json();
-      if (!data?.access_token) throw new Error('Missing access token');
-      setCookie('jwt', data.access_token, 7, true);
-      if (data.refresh_token) {
-        setCookie('refresh_token', data.refresh_token, 30, true);
-      }
-      window.dispatchEvent(new CustomEvent('jwt-updated', { detail: data.access_token }));
-      setJwt(data.access_token);
-      return data.access_token;
-    } catch {
-      deleteCookie('jwt');
-      deleteCookie('refresh_token');
-      setJwt(null);
-      setUser(null);
-      setShowProfile(false);
-      setShowStats(false);
-      setShowCollection(false);
-      setShowArtistManager(false);
-      setPage(1);
-      setTotalAlbums(0);
-      setAllAlbums([]);
-      if (auth.currentUser) {
-        signOut(auth).catch(() => {});
-      }
-      return null;
-    }
-  }, []);
-
+  // Pré-refresh silencieux: 5 minutes avant l'expiration, ping un endpoint protégé pour déclencher le refresh via authFetch
   useEffect(() => {
-    if (!jwtPayload?.exp) return;
-    const now = Date.now();
-    const expirationMs = jwtPayload.exp * 1000;
-    const refreshLeadTime = 60 * 1000; // refresh 1 minute before expiry
-    const refreshAt = expirationMs - refreshLeadTime;
-    if (refreshAt <= now) {
-      refreshAccessToken();
-      return;
-    }
-    const timeoutId = setTimeout(() => {
-      refreshAccessToken();
-    }, refreshAt - now);
-    return () => clearTimeout(timeoutId);
-  }, [jwtPayload?.exp, refreshAccessToken]);
+    const intervalId = setInterval(async () => {
+      try {
+        const { isJwtNearExpiry } = await import('./utils/authFetch');
+        // Ne pinger que si un JWT est présent et proche d'expirer
+        if (jwt && isJwtNearExpiry(300)) {
+          if (import.meta.env.DEV) {
+            console.log('[AUTH] pre-refresh:forceRefresh');
+          }
+          await forceRefresh();
+        }
+      } catch {}
+    }, 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [jwt]);
+
+  // Supprimé: refreshAccessToken (on délègue au wrapper authFetch pour éviter les doublons et les toasts multiples)
+
+  // Supprimé: minuterie de refresh proactif (authFetch gère le refresh au moment des requêtes)
 
   useEffect(() => {
     const handleAuthChange = (firebaseUser) => {
@@ -146,6 +114,16 @@ function App() {
         deleteCookie('refresh_token');
         setJwt(null);
         setUser(null);
+        try {
+          toast({
+            title: 'Session expirée',
+            description: 'Veuillez vous reconnecter pour continuer.',
+            status: 'warning',
+            isClosable: true,
+            duration: 9000,
+            position: 'top-right',
+          });
+        } catch {}
         setShowProfile(false);
         setShowStats(false);
         setShowCollection(false);
@@ -159,46 +137,71 @@ function App() {
       setJwt(token);
     };
     window.addEventListener('jwt-updated', handleJwtUpdated);
-    return () => window.removeEventListener('jwt-updated', handleJwtUpdated);
+    const handleJwtInvalidated = () => {
+      // Afficher un toast persistant doux
+      try {
+        toast({
+          title: 'Session expirée',
+          description: 'Votre session a expiré. Cliquez sur le bouton Google pour vous reconnecter.',
+          status: 'warning',
+          isClosable: true,
+          duration: 15000,
+          position: 'top-right',
+        });
+      } catch {}
+      setShowExpiredBanner(true);
+      // Ne pas rediriger automatiquement pour éviter les boucles; laisser l'utilisateur reprendre la main
+    };
+    window.addEventListener('jwt-invalidated', handleJwtInvalidated);
+    return () => {
+      window.removeEventListener('jwt-updated', handleJwtUpdated);
+      window.removeEventListener('jwt-invalidated', handleJwtInvalidated);
+      setShowExpiredBanner(false);
+    };
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    const ensureValidToken = async () => {
+    const syncTokenFromCookie = () => {
       const token = getCookie('jwt');
       if (token && !isJwtExpired(token)) {
-        if (token !== jwt && !cancelled) {
-          setJwt(token);
+        if (token !== jwt && !cancelled) setJwt(token);
+      } else {
+        // Ne pas nettoyer agressivement; laisser le wrapper gérer les refresh/invalidations
+        if (!cancelled && jwt !== null) setJwt(null);
+      }
+    };
+    syncTokenFromCookie();
+    return () => { cancelled = true; };
+  }, [jwt]);
+
+  // Rafraîchissement au retour d'inactivité: sur focus/visibilitychange, tenter un refresh si expiré ou proche
+  useEffect(() => {
+    const checkAndRefresh = async () => {
+      try {
+        const { isJwtNearExpiry } = await import('./utils/authFetch');
+        const token = getCookie('jwt');
+        const expired = !token || isJwtExpired(token);
+        const nearly = token && isJwtNearExpiry(300);
+        // Éviter les pings si pas de JWT (déconnecté)
+        if (jwt && (expired || nearly)) {
+          if (import.meta.env.DEV) {
+            console.log('[AUTH] focus/visible:forceRefresh');
+          }
+          await forceRefresh();
         }
-        return;
-      }
-      const refreshed = await refreshAccessToken();
-      if (cancelled) return;
-      if (refreshed) {
-        return;
-      }
-      deleteCookie('jwt');
-      deleteCookie('refresh_token');
-      if (jwt !== null) {
-        setJwt(null);
-      }
-      setUser(null);
-      setShowProfile(false);
-      setShowStats(false);
-      setShowCollection(false);
-      setShowArtistManager(false);
-      setPage(1);
-      setTotalAlbums(0);
-      setAllAlbums([]);
-      if (auth.currentUser) {
-        signOut(auth).catch(() => {});
-      }
+      } catch {}
     };
-    ensureValidToken();
+
+    const onFocus = () => { checkAndRefresh(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') checkAndRefresh(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
-      cancelled = true;
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [jwt, refreshAccessToken]);
+  }, []);
   const [artistFilter, setArtistFilter] = useState('');
   const [artistQuery, setArtistQuery] = useState('');
   const [artistSuggestions, setArtistSuggestions] = useState([]);
@@ -380,6 +383,23 @@ function App() {
     refreshCurrentPage();
     fetchAllAlbums();
   }, [refreshCurrentPage, fetchAllAlbums]);
+
+  const handleLogout = useCallback(() => {
+    TokenService.logout(() => {
+      setJwt(null);
+      setUser(null);
+      setShowProfile(false);
+      setShowStats(false);
+      setShowCollection(false);
+      setShowArtistManager(false);
+      setPage(1);
+      setTotalAlbums(0);
+      setAllAlbums([]);
+      setShowExpiredBanner(false);
+      // Redirection douce vers accueil/stats public si nécessaire
+      // window.location.href = '/';
+    });
+  }, []);
 
   const handleCollectionUpdate = useCallback((albumId, collection) => {
     setAlbums(prev => prev.map(album => (
@@ -708,6 +728,7 @@ function App() {
           >
             Disco 2000
           </Heading>
+          <SessionStatusBadge />
           {activeFiltersCount > 0 && !showStats && !showProfile && !showCollection && !showLists && (
             <Badge
               colorScheme="purple"
@@ -723,6 +744,7 @@ function App() {
           )}
         </Flex>
         <Box display={{ base: 'none', md: 'flex' }} alignItems="center" gap={2}>
+          <GoogleAuthButton onLoginSuccess={() => { /* noop */ }} jwtToken={jwt} />
           <Button
             variant={!showStats && !showProfile && !showCollection && !showArtistManager && !showLists ? 'solid' : 'ghost'}
             size="sm"

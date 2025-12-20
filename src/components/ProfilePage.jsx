@@ -1,9 +1,10 @@
 import { Box, Heading, Text, Avatar, Button, Stack, useColorMode, Tag } from '@chakra-ui/react';
 import { useEffect, useState } from 'react';
-import { getCookie, deleteCookie } from '../utils/cookie';
+import { getCookie } from '../utils/cookie';
 import { decodeJwt } from '../utils/jwt';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
+import TokenService from '../utils/tokenService';
 
 export default function ProfilePage({ onLogout }) {
   const [user, setUser] = useState(null);
@@ -52,7 +53,17 @@ export default function ProfilePage({ onLogout }) {
         </>
       )}
       <Stack direction="row" spacing={4} justify="center" mb={2}>
-        <Button colorScheme="red" onClick={() => { signOut(auth); deleteCookie('jwt'); deleteCookie('refresh_token'); window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null })); onLogout && onLogout(); }}>Se déconnecter</Button>
+        <Button
+          colorScheme="red"
+          onClick={() => {
+            TokenService.logout(() => {
+              window.dispatchEvent(new CustomEvent('jwt-updated', { detail: null }));
+              if (onLogout) onLogout();
+            });
+          }}
+        >
+          Se déconnecter
+        </Button>
       </Stack>
         </Box>
 
