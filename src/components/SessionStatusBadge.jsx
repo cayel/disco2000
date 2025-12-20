@@ -37,17 +37,18 @@ export default function SessionStatusBadge() {
     return () => { if (raf) clearTimeout(raf); };
   }, []);
 
-  if (remainingMs == null) return null;
+  // Ne rien afficher si pas de JWT ou si expiré
+  if (remainingMs == null || remainingMs <= 0) return null;
+  
   const minutes = Math.max(0, Math.floor(remainingMs / 60000));
   const seconds = Math.max(0, Math.floor((remainingMs % 60000) / 1000));
-  const soon = remainingMs < 5 * 60 * 1000 && remainingMs > 0;
-  const expired = remainingMs <= 0;
-  const color = expired ? 'red' : soon ? 'orange' : 'green';
+  const soon = remainingMs < 5 * 60 * 1000;
+  const color = soon ? 'orange' : 'green';
 
   return (
-    <Tooltip label={expired ? 'Session expirée' : soon ? 'Session bientôt expirée' : 'Session active'}>
+    <Tooltip label={soon ? 'Session bientôt expirée' : 'Session active'}>
       <Badge colorScheme={color} borderRadius="full" px={2} py={1}>
-        {expired ? 'Expirée' : `Session: ${minutes}m ${seconds}s`}
+        Session: {minutes}m {seconds}s
       </Badge>
     </Tooltip>
   );

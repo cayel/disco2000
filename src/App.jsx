@@ -8,7 +8,6 @@ import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIc
 import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import SessionExpiredBanner from './components/SessionExpiredBanner'
-import SessionStatusBadge from './components/SessionStatusBadge'
 import AlbumCard from './components/AlbumCard'
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
@@ -728,7 +727,6 @@ function App() {
           >
             Disco 2000
           </Heading>
-          <SessionStatusBadge />
           {activeFiltersCount > 0 && !showStats && !showProfile && !showCollection && !showLists && (
             <Badge
               colorScheme="purple"
@@ -744,7 +742,6 @@ function App() {
           )}
         </Flex>
         <Box display={{ base: 'none', md: 'flex' }} alignItems="center" gap={2}>
-          <GoogleAuthButton onLoginSuccess={() => { /* noop */ }} jwtToken={jwt} />
           <Button
             variant={!showStats && !showProfile && !showCollection && !showArtistManager && !showLists ? 'solid' : 'ghost'}
             size="sm"
