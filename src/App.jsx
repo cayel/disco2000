@@ -2,6 +2,7 @@ import { decodeJwt, isJwtExpired } from './utils/jwt';
 import authFetch, { forceRefresh } from './utils/authFetch';
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 import { debounce } from './utils/debounce';
+import { useViewPreferences } from './utils/useViewPreferences';
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense, useRef } from 'react'
 import { Heading, Box, Spinner, SimpleGrid, Text, IconButton, useColorMode, Button, RangeSlider, RangeSliderTrack, RangeSliderFilledTrack, RangeSliderThumb, Slider, SliderTrack, SliderFilledTrack, SliderThumb, FormControl, FormLabel, Tooltip, Input, InputGroup, InputRightElement, CloseButton, Select, ButtonGroup, Flex, Badge, Skeleton, SkeletonText, Fade, ScaleFade, Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalBody, ModalCloseButton, Stack, chakra, useToast } from '@chakra-ui/react'
 import { AddIcon, ArrowLeftIcon, ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon, HamburgerIcon, SearchIcon } from '@chakra-ui/icons'
@@ -9,6 +10,7 @@ import { MoonIcon, SunIcon } from '@chakra-ui/icons'
 import GoogleAuthButton from './components/GoogleAuthButton'
 import SessionExpiredBanner from './components/SessionExpiredBanner'
 import AlbumCard from './components/AlbumCard'
+import ViewControls from './components/ViewControls'
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
 import './App.css'
@@ -211,27 +213,10 @@ function App() {
   const [hasCustomYearRange, setHasCustomYearRange] = useState(false);
   const { colorMode, toggleColorMode } = useColorMode();
   const [albums, setAlbums] = useState([])
-  // Adapter le nombre d'albums par ligne selon la taille d'écran
-  const [albumsPerRow, setAlbumsPerRow] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768 ? 2 : 5;
-    }
-    return 5;
-  })
+  // Gestion des préférences de vue (grille/liste, taille)
+  const { viewMode, gridSize, setViewMode, setGridSize } = useViewPreferences();
   const [selectedAlbumId, setSelectedAlbumId] = useState(null);
 
-  // Réajuster albumsPerRow lors du resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768 && albumsPerRow > 3) {
-        setAlbumsPerRow(2);
-      } else if (window.innerWidth >= 768 && albumsPerRow < 4) {
-        setAlbumsPerRow(5);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [albumsPerRow]);
   // Gestion du chargement initial et des rafraîchissements partiels (pagination / filtres)
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [albumsLoading, setAlbumsLoading] = useState(false);
@@ -1179,21 +1164,14 @@ function App() {
                     </Box>
                   );
                 })()}
-                <FormControl mb={2} display={{ base: 'none', md: 'block' }}>
-                  <FormLabel fontWeight="bold">Albums par ligne</FormLabel>
-                  <Slider
-                    min={4}
-                    max={8}
-                    step={1}
-                    value={albumsPerRow}
-                    onChange={setAlbumsPerRow}
-                    colorScheme="purple"
-                  >
-                    <SliderTrack>
-                      <SliderFilledTrack />
-                    </SliderTrack>
-                    <SliderThumb boxSize={6} fontWeight="bold">{albumsPerRow}</SliderThumb>
-                  </Slider>
+                <FormControl mb={2}>
+                  <FormLabel fontWeight="bold">Affichage</FormLabel>
+                  <ViewControls
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                    gridSize={gridSize}
+                    onGridSizeChange={setGridSize}
+                  />
                 </FormControl>
               </Box>
               {/* Grille d'albums à droite */}
@@ -1336,9 +1314,9 @@ function App() {
                       </Flex>
                     )}
                     
-                    <SimpleGrid columns={albumsPerRow} spacing={{ base: 3, md: 2 }} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px" w="100%">
+                    <SimpleGrid columns={gridSize} spacing={{ base: 3, md: 2 }} mt={2} opacity={albumsLoading ? 0.55 : 1} transition="opacity 0.25s" minH="260px" w="100%">
                         {albums.length === 0 ? (
-                          [...Array(albumsPerRow)].map((_, i) => (
+                          [...Array(gridSize)].map((_, i) => (
                           <Box
                             key={`empty-skel-${i}`}
                             position="relative"
@@ -1415,6 +1393,7 @@ function App() {
                             index={index}
                             colorMode={colorMode}
                             isUser={isUser}
+                            viewMode={viewMode}
                             onClick={() => {
                               setSelectedAlbumId(album.id);
                               openDetails();

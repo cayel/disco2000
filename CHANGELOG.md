@@ -1,5 +1,52 @@
 # Changelog
 
+## [2025-12-21] - Customizable Grid/List View Mode
+
+### Added
+- **ViewControls Component**: New dropdown menu for view customization
+  - 3 display modes: Grid (default), Compact, Detailed
+  - 6 size presets: From "Very Large" (2 per row) to "Very Small" (8 per row)
+  - Visual icons for each size preset
+- **useViewPreferences Hook**: Custom hook for persistent preferences
+  - Automatic localStorage sync for view mode and grid size
+  - Loads user preferences on mount
+  - Returns setters for easy state management
+- **AlbumCard View Modes**:
+  - **Grid Mode** (default): Standard display with full overlay on hover
+  - **Compact Mode**: Minimal overlay with just title and artist (centered)
+  - **Detailed Mode**: Full overlay with additional metadata (country, genre)
+- **Preference Persistence**: User choices saved in localStorage and restored on next visit
+
+### Changed
+- **App.jsx**:
+  - Replaced `albumsPerRow` state with `useViewPreferences` hook
+  - Removed manual resize handler (no longer needed)
+  - Integrated ViewControls component in filters section
+  - Pass viewMode prop to all AlbumCard instances
+- **AlbumCard.jsx**:
+  - Added `viewMode` prop with default value 'grid'
+  - Adaptive overlay rendering based on mode
+  - Updated memo comparison to include viewMode
+  - Compact mode: minimal padding and centered content
+  - Detailed mode: extra metadata display (country, genre)
+
+### Technical Details
+- **Storage Key**: `disco2000_view_preferences`
+- **Default Preferences**: `{ viewMode: 'grid', gridSize: 5 }`
+- **Size Presets**: 2, 3, 4, 5, 6, 8 columns (optimized for various screen sizes)
+- **View Modes**: 'grid', 'compact', 'detailed'
+- **Components**: 
+  - `src/components/ViewControls.jsx` (dropdown menu)
+  - `src/utils/useViewPreferences.js` (persistence hook)
+
+### User Benefits
+- Personalized browsing experience
+- Adjustable density for different screen sizes and preferences
+- Quick access to more/less information per album
+- Settings persist across sessions
+
+---
+
 ## [2025-12-20] - Session Management & Refresh Token
 
 ### Added
