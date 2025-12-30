@@ -243,29 +243,29 @@ const AlbumCard = memo(({ album, index, colorMode, isUser, onClick, viewMode = '
               bottom={0}
               left={0}
               right={0}
-              bg={colorMode === 'dark' ? 'rgba(10,10,25,0.85)' : 'rgba(255,255,255,0.85)'}
+              bg={colorMode === 'dark' ? 'rgba(10,10,25,0.90)' : 'rgba(255,255,255,0.90)'}
               backdropFilter="blur(4px)"
-              p={2}
+              p={{ base: 2, md: 2 }}
               borderBottomRadius="xl"
             >
               <Text
-                fontSize="xs"
+                fontSize={{ base: "2xs", sm: "xs" }}
                 fontWeight="bold"
                 noOfLines={1}
                 color={colorMode === 'dark' ? 'brand.300' : 'brand.600'}
               >
                 {album.title}
               </Text>
-              <Flex justify="space-between" align="center" mt={0.5}>
+              <Flex justify="space-between" align="center" mt={{ base: 0.5, md: 0.5 }}>
                 <Text
-                  fontSize="2xs"
+                  fontSize={{ base: "3xs", sm: "2xs" }}
                   color={colorMode === 'dark' ? 'slate.300' : 'slate.600'}
                   noOfLines={1}
                   flex={1}
                 >
                   {album.artist}
                 </Text>
-                <Badge fontSize="2xs" colorScheme="purple" ml={1}>
+                <Badge fontSize={{ base: "3xs", sm: "2xs" }} colorScheme="purple" ml={1}>
                   {album.year}
                 </Badge>
               </Flex>

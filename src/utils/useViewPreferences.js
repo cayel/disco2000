@@ -4,7 +4,7 @@ const STORAGE_KEY = 'disco2000_view_preferences';
 
 const DEFAULT_PREFERENCES = {
   viewMode: 'grid',
-  gridSize: 5,
+  gridSize: typeof window !== 'undefined' && window.innerWidth < 768 ? 2 : 5,
 };
 
 /**
@@ -17,7 +17,12 @@ export function useViewPreferences() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        return { ...DEFAULT_PREFERENCES, ...JSON.parse(stored) };
+        const parsed = JSON.parse(stored);
+        // Sur mobile, limiter la taille minimale à 2
+        if (typeof window !== 'undefined' && window.innerWidth < 768 && parsed.gridSize > 3) {
+          parsed.gridSize = 2;
+        }
+        return { ...DEFAULT_PREFERENCES, ...parsed };
       }
     } catch (error) {
       console.error('Erreur lors du chargement des préférences:', error);

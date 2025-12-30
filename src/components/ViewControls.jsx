@@ -33,8 +33,8 @@ export default function ViewControls({ viewMode, onViewModeChange, gridSize, onG
             <Box
               key={mode.value}
               flex={1}
-              px={3}
-              py={2}
+              px={{ base: 2, md: 3 }}
+              py={{ base: 2, md: 2 }}
               borderRadius="lg"
               cursor="pointer"
               textAlign="center"
@@ -51,11 +51,14 @@ export default function ViewControls({ viewMode, onViewModeChange, gridSize, onG
                 transform: 'translateY(-2px)',
                 boxShadow: 'md',
               }}
+              _active={{
+                transform: 'scale(0.95)',
+              }}
               onClick={() => onViewModeChange(mode.value)}
               fontWeight={viewMode === mode.value ? 'bold' : 'medium'}
               fontSize="sm"
             >
-              <Text fontSize="lg" mb={1}>{mode.icon}</Text>
+              <Text fontSize={{ base: 'md', md: 'lg' }} mb={1}>{mode.icon}</Text>
               <Text fontSize="xs">{mode.label}</Text>
             </Box>
           ))}
@@ -67,12 +70,12 @@ export default function ViewControls({ viewMode, onViewModeChange, gridSize, onG
         <Text fontSize="xs" fontWeight="semibold" mb={2} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
           Taille
         </Text>
-        <HStack spacing={2} justify="space-between">
+        <HStack spacing={{ base: 1, md: 2 }} justify="space-between">
           {gridSizes.map(size => (
             <Box
               key={size.value}
-              w="40px"
-              h="40px"
+              w={{ base: '36px', md: '40px' }}
+              h={{ base: '36px', md: '40px' }}
               borderRadius="md"
               cursor="pointer"
               display="flex"
@@ -94,6 +97,9 @@ export default function ViewControls({ viewMode, onViewModeChange, gridSize, onG
                 bg: gridSize === size.value 
                   ? (colorMode === 'dark' ? 'purple.500' : 'purple.600')
                   : (colorMode === 'dark' ? 'slate.600' : 'gray.200'),
+              }}
+              _active={{
+                transform: 'scale(0.95)',
               }}
               onClick={() => onGridSizeChange(size.value)}
             >
