@@ -11,6 +11,7 @@ import GoogleAuthButton from './components/GoogleAuthButton'
 import SessionExpiredBanner from './components/SessionExpiredBanner'
 import AlbumCard from './components/AlbumCard'
 import ViewControls from './components/ViewControls'
+import PWAStatus from './components/PWAStatus'
 import { auth } from './firebase'
 import { signOut } from 'firebase/auth'
 import './App.css'
@@ -834,6 +835,7 @@ function App() {
               title={user.displayName || user.email || 'Mon profil'}
             />
           ) : null}
+          <PWAStatus showInstallButton={true} />
           <GoogleAuthButton onLoginSuccess={fetchAlbums} jwtToken={jwt} />
           <IconButton
             aria-label={colorMode === 'light' ? 'Activer le mode sombre' : 'Activer le mode clair'}
