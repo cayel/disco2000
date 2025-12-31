@@ -8,8 +8,6 @@ import { Box, Heading, Text, Stack, HStack, Tag, Progress, useColorMode, Button 
  */
 export default function CompactCountryDistribution({ artists = [], maxItems = 8, initialLimit = 5 }) {
   const { colorMode } = useColorMode();
-  const cardBg = colorMode === 'dark' ? 'rgba(255,255,255,0.06)' : 'gray.50';
-  const borderColor = colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.200';
 
   const { topCountries, total } = useMemo(() => aggregate(artists, maxItems), [artists, maxItems]);
   const [expanded, setExpanded] = useState(false);
@@ -19,10 +17,7 @@ export default function CompactCountryDistribution({ artists = [], maxItems = 8,
   );
 
   return (
-    <Box borderRadius="xl" p={{ base: 4, md: 5 }} boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={borderColor}>
-      <Heading as="h3" size="sm" mb={2} color={colorMode==='dark' ? 'slate.200' : 'slate.800'}>
-        Répartition par pays (compact)
-      </Heading>
+    <Box>
       {topCountries.length === 0 ? (
         <Text fontSize="sm" color={colorMode==='dark' ? 'gray.400' : 'gray.600'}>Aucune donnée</Text>
       ) : (

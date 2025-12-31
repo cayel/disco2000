@@ -1,5 +1,5 @@
 import { Box, useColorMode, Text, Flex } from '@chakra-ui/react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Label, Brush } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 // Permet désormais de recevoir soit une liste d'albums (legacy) soit un tableau agrégé yearData [{year, count}].
 export default function AlbumsPerYearChart({ albums = [], yearData = [] }) {
@@ -27,26 +27,58 @@ export default function AlbumsPerYearChart({ albums = [], yearData = [] }) {
   const hasData = data.length > 0;
 
   const isDark = colorMode === 'dark';
-  const chartBg = isDark ? '#23213a' : '#fff';
-  const chartFg = isDark ? '#e9d8fd' : '#2d3748';
-  const gridColor = isDark ? '#4b436a' : '#e2e8f0';
+  const chartFg = isDark ? '#cbd5e0' : '#4a5568';
+  const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
 
   return (
-  <Box w="100%" minW="320px" h="340px" minH="240px" maxW="1100px" mx="auto" my={8} bg={isDark ? 'slate.900' : 'white'} p={0} borderRadius="lg" boxShadow="md" position="relative">
+    <Box w="100%" h="280px" position="relative">
       {hasData ? (
-        <ResponsiveContainer width="100%" height="100%" minWidth={320} minHeight={240} aspect={2.8}>
-          <BarChart data={data} margin={{ top: 24, right: 24, left: 24, bottom: 24 }}>
-            <CartesianGrid stroke={gridColor} strokeDasharray="3 3" />
-            <XAxis dataKey="year" stroke={chartFg} fontSize={14} tickLine={false} axisLine={{ stroke: gridColor }}>
-              <Label value="Année" offset={-8} position="insideBottom" fill={chartFg} />
-            </XAxis>
-            <YAxis stroke={chartFg} fontSize={14} tickLine={false} axisLine={{ stroke: gridColor }}>
-              <Label value="Nombre de disques" angle={-90} position="insideLeft" fill={chartFg} />
-            </YAxis>
-            <Tooltip contentStyle={{ background: chartBg, color: chartFg, borderRadius: 8, border: 'none' }} cursor={{ fill: isDark ? '#322659' : '#e9d8fd', opacity: 0.2 }} />
-            <Bar dataKey="count" fill="#805ad5" radius={[4, 4, 0, 0]} />
-            <Brush dataKey="year" height={20} stroke={isDark ? '#e9d8fd' : '#2d3748'} travellerWidth={8} />
-          </BarChart>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+            <XAxis 
+              dataKey="year" 
+              stroke={chartFg} 
+              fontSize={12} 
+              tickLine={false} 
+              axisLine={false}
+              dy={5}
+            />
+            <YAxis 
+              stroke={chartFg} 
+              fontSize={12} 
+              tickLine={false} 
+              axisLine={false}
+              dx={-5}
+            />
+            <Tooltip 
+              contentStyle={{ 
+                background: isDark ? 'rgba(30, 30, 40, 0.95)' : 'rgba(255, 255, 255, 0.95)', 
+                border: 'none',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                padding: '8px 12px'
+              }}
+              labelStyle={{ color: chartFg, fontWeight: 'bold', marginBottom: '4px' }}
+              itemStyle={{ color: '#8b5cf6' }}
+              cursor={{ stroke: '#8b5cf6', strokeWidth: 1, strokeDasharray: '3 3' }}
+            />
+            <Area 
+              type="monotone" 
+              dataKey="count" 
+              stroke="#8b5cf6" 
+              strokeWidth={2}
+              fillOpacity={1} 
+              fill="url(#colorCount)"
+              name="Albums"
+            />
+          </AreaChart>
         </ResponsiveContainer>
       ) : (
         <Flex w="100%" h="100%" align="center" justify="center" direction="column" gap={2}>

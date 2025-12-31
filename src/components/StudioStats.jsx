@@ -277,9 +277,9 @@ export default function StudioStats() {
                 <Text color="red.400">{error}</Text>
               ) : publicStats ? (
                 <Stack spacing={8}>
-                  <Box borderRadius="2xl" p={{ base: 5, md: 6 }} boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                    <Text fontSize="xs" textTransform="uppercase" letterSpacing="wider" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} mb={2}>
-                      Panorama
+                  <Box p={{ base: 4, md: 5 }} bg={cardBg}>
+                    <Text fontSize="sm" fontWeight="semibold" mb={3} color={colorMode === 'dark' ? 'gray.300' : 'gray.700'}>
+                      Vue d'ensemble
                     </Text>
                     <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6} alignItems="flex-start">
                       <Stat>
@@ -319,50 +319,34 @@ export default function StudioStats() {
                       </Stat>
                     </SimpleGrid>
                   </Box>
-                  <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
-                    <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg}>
-                      <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Année la plus représentée</StatLabel>
-                      <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'brand.200' : 'brand.700'}>
-                        {publicStats.top_year ?? 'N/A'}
-                      </StatNumber>
-                      {publicStats.top_year_count ? (
-                        <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
-                          {publicStats.top_year_count} album{publicStats.top_year_count > 1 ? 's' : ''} publié{publicStats.top_year_count > 1 ? 's' : ''}
-                        </StatHelpText>
-                      ) : null}
-                    </Stat>
-
-                    <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg}>
-                      <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Artiste le plus représenté</StatLabel>
+                  
+                  <Box p={{ base: 4, md: 5 }} bg={cardBg}>
+                    <Text fontSize="sm" fontWeight="semibold" mb={3} color={colorMode==='dark' ? 'gray.300' : 'gray.700'}>
+                      Artiste le plus représenté
+                    </Text>
+                    <Stat>
                       <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'brand.200' : 'brand.700'}>
                         {publicStats.top_artist ?? 'N/A'}
                       </StatNumber>
                       {publicStats.top_artist_count ? (
-                        <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
+                        <StatHelpText color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
                           {publicStats.top_artist_count} album{publicStats.top_artist_count > 1 ? 's' : ''}
                         </StatHelpText>
                       ) : null}
                     </Stat>
-
-                    <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg}>
-                      <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Totaux</StatLabel>
-                      <StatNumber fontSize="2xl" color={colorMode === 'dark' ? 'brand.200' : 'brand.700'}>
-                        {publicStats.total_albums ?? 0} / {publicStats.total_artists ?? 0}
-                      </StatNumber>
-                      <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
-                        Albums / Artistes distincts
-                      </StatHelpText>
-                    </Stat>
-                  </SimpleGrid>
+                  </Box>
                   
-                  <Box borderRadius="xl" p={{ base: 3, md: 4 }} boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                    <Text fontSize="sm" mb={2} color={colorMode==='dark' ? 'gray.400' : 'gray.600'}>
+                  <Box p={{ base: 3, md: 4 }} bg={cardBg}>
+                    <Text fontSize="sm" fontWeight="semibold" mb={2} color={colorMode==='dark' ? 'gray.300' : 'gray.700'}>
                       Albums par année
                     </Text>
                     <AlbumsPerYearChart yearData={publicStats.albums_per_year || []} />
                   </Box>
                   
-                  <Box p={{ base: 3, md: 4 }} borderRadius="xl" boxShadow="md" bg={cardBg}>
+                  <Box p={{ base: 3, md: 4 }} bg={cardBg}>
+                    <Text fontSize="sm" fontWeight="semibold" mb={2} color={colorMode==='dark' ? 'gray.300' : 'gray.700'}>
+                      Répartition par pays
+                    </Text>
                     {loadingAlbums ? (
                       <Flex justify="center" align="center" minH="120px">
                         <Spinner size="sm" color="brand.500" />

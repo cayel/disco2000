@@ -18,12 +18,9 @@ export default function GenresDistribution({ genres = [], styles = [] }) {
   const totalStyles = useMemo(() => sumCounts(topStyles), [topStyles]);
 
   return (
-    <Box borderRadius="xl" p={{ base: 4, md: 6 }} boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={borderColor}>
-      <Heading as="h3" size="md" mb={2} color={colorMode==='dark' ? 'slate.200' : 'slate.800'}>
-        Répartition par genre et style
-      </Heading>
-      <Text fontSize="sm" color={colorMode==='dark' ? 'gray.400' : 'gray.600'} mb={4}>
-        Top catégories par nombre de disques (jusqu'à 10)
+    <Box p={{ base: 4, md: 5 }} bg={cardBg}>
+      <Text fontSize="sm" fontWeight="semibold" mb={4} color={colorMode==='dark' ? 'gray.300' : 'gray.700'}>
+        Genres et styles
       </Text>
       <Stack spacing={6} direction={{ base: 'column', lg: 'row' }}>
         <Box flex={1}>

@@ -379,7 +379,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
               {activeArtist ? (
                 <Stack spacing={6}>
                   <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap={6}>
-                    <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
+                    <Stat p={6} bg={cardBg}>
                       <StatLabel fontSize="lg">Albums recensés</StatLabel>
                       <StatNumber fontSize="3xl">
                         {activeArtist.total}
@@ -387,7 +387,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
                       <StatHelpText>Total général pour cet artiste</StatHelpText>
                     </Stat>
 
-                    <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
+                    <Stat p={6} bg={cardBg}>
                       <StatLabel fontSize="lg">Albums dans ta collection</StatLabel>
                       <StatNumber fontSize="3xl">
                         {activeArtist.ownedCount}
@@ -398,7 +398,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
                       <Progress value={activeArtist.percentOwned} colorScheme="purple" size="sm" borderRadius="full" mt={4} />
                     </Stat>
 
-                    <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
+                    <Stat p={6} bg={cardBg}>
                       <StatLabel fontSize="lg">Format dominant</StatLabel>
                       <StatNumber fontSize="2xl">
                         {activeArtist.ownedCount ? activeArtist.dominantFormat : 'Aucun disque'}
@@ -410,7 +410,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
                   </SimpleGrid>
 
                   <Flex direction={{ base: 'column', md: 'row' }} gap={6} align="stretch">
-                    <Box flex="1" p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
+                    <Box flex="1" p={6} bg={cardBg}>
                       <Heading as="h3" size="md" mb={3} color={colorMode === 'dark' ? 'purple.200' : 'purple.700'}>
                         Disques dans ta collection
                       </Heading>
@@ -434,7 +434,7 @@ export default function CollectionExplorer({ albums, loading, error, onRefresh, 
                       )}
                     </Box>
 
-                    <Box flex="1" p={6} borderRadius="xl" boxShadow="md" bg={cardBg} backdropFilter="blur(8px)">
+                    <Box flex="1" p={6} bg={cardBg}>
                       <Heading as="h3" size="md" mb={3} color={colorMode === 'dark' ? 'pink.200' : 'pink.600'}>
                         Disques manquants
                       </Heading>

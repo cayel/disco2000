@@ -66,30 +66,17 @@ export default function CollectionStats() {
   }, [totalDiscs, totalCd, totalVinyl]);
 
   return (
-    <Box
-      w="100%"
-      maxW="1100px"
-      mx="auto"
-      mt={10}
-      p={{ base: 4, md: 6 }}
-      borderRadius="2xl"
-      boxShadow="xl"
-      bg={containerBg}
-      textAlign="left"
-      borderWidth={colorMode === 'dark' ? 1 : 0}
-      borderColor={colorMode === 'dark' ? 'whiteAlpha.200' : 'gray.100'}
-    >
-      <Stack spacing={6}>
-        <Box>
-          <Heading as="h2" size="lg" color={colorMode === 'dark' ? 'brand.300' : 'brand.600'}>
-            Statistiques de ma collection
-          </Heading>
-          <Text mt={2} color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>
-            Un aperçu rapide de la taille de ta collection et des formats que tu possèdes.
-          </Text>
-        </Box>
+    <Stack spacing={6}>
+      <Box>
+        <Heading as="h2" size="md" color={colorMode === 'dark' ? 'brand.300' : 'brand.600'}>
+          Statistiques de ma collection
+        </Heading>
+        <Text mt={2} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+          Un aperçu rapide de la taille de ta collection et des formats que tu possèdes.
+        </Text>
+      </Box>
 
-        {loading ? (
+      {loading ? (
           <Flex justify="center" py={10}>
             <Spinner size="lg" />
           </Flex>
@@ -97,25 +84,25 @@ export default function CollectionStats() {
           <Text color="red.400">{error}</Text>
         ) : stats ? (
           <Stack spacing={8}>
-            <Box borderRadius="2xl" p={{ base: 6, md: 8 }} boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-              <Text fontSize="sm" textTransform="uppercase" letterSpacing="widest" color={colorMode==='dark'?'gray.400':'gray.600'} mb={3}>
+            <Box p={{ base: 4, md: 5 }} bg={cardBg}>
+              <Text fontSize="sm" fontWeight="semibold" mb={3} color={colorMode==='dark'?'gray.300':'gray.700'}>
                 Capacité totale
               </Text>
               <Flex align={{ base: 'flex-start', md: 'center' }} justify="space-between" gap={6} wrap="wrap">
                 <Stat minW={0}>
-                  <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>
+                  <StatLabel fontSize="sm" fontWeight="semibold" color={colorMode==='dark'?'gray.300':'gray.700'}>
                     Nombre total de disques
                   </StatLabel>
                   <StatNumber fontSize={{ base: '4xl', md: '5xl' }} fontWeight="extrabold" color={accentColor}>
                     {totalDiscs || 'N/A'}
                   </StatNumber>
-                  <StatHelpText color={colorMode==='dark'?'gray.300':'gray.500'}>
+                  <StatHelpText color={colorMode==='dark'?'gray.400':'gray.600'}>
                     {totalCd} CD • {totalVinyl} vinyles
                   </StatHelpText>
                 </Stat>
                 {totalDiscs > 0 && (
                   <Box flex="1" minW="240px">
-                    <Text fontWeight="semibold" mb={2} color={colorMode==='dark'?'slate.200':'slate.800'}>
+                    <Text fontSize="sm" fontWeight="semibold" mb={2} color={colorMode==='dark'?'gray.300':'gray.700'}>
                       Répartition des formats
                     </Text>
                     <Stack spacing={3}>
@@ -135,47 +122,47 @@ export default function CollectionStats() {
             </Box>
 
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap={6}>
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Nombre de CD</StatLabel>
+              <Stat p={{ base: 4, md: 5 }} bg={cardBg}>
+                <StatLabel fontSize="sm" fontWeight="semibold" color={colorMode==='dark'?'gray.300':'gray.700'}>Nombre de CD</StatLabel>
                 <StatNumber fontSize="3xl" color={accentColor}>
                   {totalCd || 'N/A'}
                 </StatNumber>
               </Stat>
 
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Nombre de vinyles</StatLabel>
+              <Stat p={{ base: 4, md: 5 }} bg={cardBg}>
+                <StatLabel fontSize="sm" fontWeight="semibold" color={colorMode==='dark'?'gray.300':'gray.700'}>Nombre de vinyles</StatLabel>
                 <StatNumber fontSize="3xl" color={accentColor}>
                   {totalVinyl || 'N/A'}
                 </StatNumber>
               </Stat>
 
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Artiste le plus représenté</StatLabel>
+              <Stat p={{ base: 4, md: 5 }} bg={cardBg}>
+                <StatLabel fontSize="sm" fontWeight="semibold" color={colorMode==='dark'?'gray.300':'gray.700'}>Artiste le plus représenté</StatLabel>
                 <StatNumber fontSize="2xl" color={accentColor}>
                   {stats.top_artist ?? 'N/A'}
                 </StatNumber>
                 {stats.top_artist_count && (
-                  <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
+                  <StatHelpText color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
                     {stats.top_artist_count} disque(s)
                   </StatHelpText>
                 )}
               </Stat>
 
-              <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                <StatLabel fontSize="lg" color={colorMode==='dark'?'slate.300':'slate.700'}>Année la plus représentée</StatLabel>
+              <Stat p={{ base: 4, md: 5 }} bg={cardBg}>
+                <StatLabel fontSize="sm" fontWeight="semibold" color={colorMode==='dark'?'gray.300':'gray.700'}>Année la plus représentée</StatLabel>
                 <StatNumber fontSize="2xl" color={accentColor}>
                   {stats.top_year ?? 'N/A'}
                 </StatNumber>
                 {stats.top_year_count && (
-                  <StatHelpText color={colorMode === 'dark' ? 'gray.300' : 'gray.500'}>
+                  <StatHelpText color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
                     {stats.top_year_count} disque(s)
                   </StatHelpText>
                 )}
               </Stat>
 
               {stats.most_recent_added && (
-                <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                  <StatLabel fontSize="lg">Dernier ajout</StatLabel>
+                <Stat p={{ base: 4, md: 5 }} bg={cardBg}>
+                  <StatLabel fontSize="sm" fontWeight="semibold" color={colorMode==='dark'?'gray.300':'gray.700'}>Dernier ajout</StatLabel>
                   <StatNumber fontSize="lg" noOfLines={2} color={accentColor}>
                     {stats.most_recent_added}
                   </StatNumber>
@@ -183,8 +170,8 @@ export default function CollectionStats() {
               )}
 
               {stats.collection_value && (
-                <Stat p={6} borderRadius="xl" boxShadow="md" bg={cardBg} borderWidth={colorMode==='dark'?1:0} borderColor={colorMode==='dark'?'whiteAlpha.200':'gray.200'}>
-                  <StatLabel fontSize="lg">Valeur estimée</StatLabel>
+                <Stat p={{ base: 4, md: 5 }} bg={cardBg}>
+                  <StatLabel fontSize="sm" fontWeight="semibold" color={colorMode==='dark'?'gray.300':'gray.700'}>Valeur estimée</StatLabel>
                   <StatNumber fontSize="2xl" color={accentColor}>
                     {stats.collection_value}
                   </StatNumber>
@@ -193,8 +180,7 @@ export default function CollectionStats() {
             </SimpleGrid>
           </Stack>
         ) : null}
-      </Stack>
-    </Box>
+    </Stack>
   );
 }
 
