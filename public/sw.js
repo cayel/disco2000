@@ -1,6 +1,10 @@
-const CACHE_NAME = 'disco2000-v1';
-const API_CACHE_NAME = 'disco2000-api-v1';
-const IMAGE_CACHE_NAME = 'disco2000-images-v1';
+// Version du cache - À INCRÉMENTER À CHAQUE DÉPLOIEMENT
+const CACHE_VERSION = '2.0.0';
+const BUILD_DATE = '2026-01-01'; // Date du build
+
+const CACHE_NAME = `disco2000-v${CACHE_VERSION}`;
+const API_CACHE_NAME = `disco2000-api-v${CACHE_VERSION}`;
+const IMAGE_CACHE_NAME = `disco2000-images-v${CACHE_VERSION}`;
 
 // Assets à mettre en cache lors de l'installation
 const STATIC_ASSETS = [
@@ -19,7 +23,7 @@ const IMAGE_CACHE_DURATION = 1000 * 60 * 60 * 24 * 7; // 7 jours
 
 // Installation du service worker
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installation en cours...');
+  console.log(`[SW] Installation en cours... Version: ${CACHE_VERSION} (${BUILD_DATE})`);
   
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
