@@ -1126,43 +1126,188 @@ function App() {
                     </Button>
                   )}
                 </FormControl>
-                {/* Double slider (RangeSlider) pour plage d'années */}
+                {/* Filtre par année moderne */}
                 {availableYears && (() => {
                   const [minSelected, maxSelected] = yearRange[0] !== null ? yearRange : [availableYears.min, availableYears.max];
+                  const allYears = [];
+                  for (let y = availableYears.min; y <= availableYears.max; y++) {
+                    allYears.push(y);
+                  }
+                  
+                  const isAllYears = minSelected === availableYears.min && maxSelected === availableYears.max;
+                  const is6070 = minSelected === 1960 && maxSelected === 1979;
+                  const is80 = minSelected === 1980 && maxSelected === 1989;
+                  const is90 = minSelected === 1990 && maxSelected === 1999;
+                  const is2000 = minSelected === 2000 && maxSelected === 2009;
+                  const is2010 = minSelected === 2010 && maxSelected === 2029;
+                  
                   return (
                     <Box mb={4}>
-                      <Text fontSize="sm" mb={1} color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
-                        Plage d'années : {minSelected} - {maxSelected}
+                      <Text fontSize="sm" mb={2} fontWeight="semibold" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                        Filtrer par année
                       </Text>
-                      <RangeSlider
-                        min={availableYears.min}
-                        max={availableYears.max}
-                        step={1}
-                        value={[minSelected, maxSelected]}
-                        onChange={val => setYearRange(val)}
-                        onChangeEnd={handleYearRangeApply}
-                        colorScheme="purple"
-                      >
-                        <RangeSliderTrack>
-                          <RangeSliderFilledTrack />
-                        </RangeSliderTrack>
-                        <RangeSliderThumb index={0} />
-                        <RangeSliderThumb index={1} />
-                      </RangeSlider>
-                      <Button
-                        mt={1}
-                        size="xs"
-                        variant="ghost"
-                        colorScheme="gray"
-                        onClick={() => {
-                          const defaultRange = [availableYears.min, availableYears.max];
-                          setYearRange(defaultRange);
-                          handleYearRangeApply(defaultRange);
-                          setHasCustomYearRange(false);
-                        }}
-                      >
-                        Toutes les années
-                      </Button>
+                      
+                      <ButtonGroup size="xs" spacing={1} flexWrap="wrap" mb={3}>
+                        <Button
+                          variant={isAllYears ? 'solid' : 'outline'}
+                          colorScheme={isAllYears ? 'purple' : 'gray'}
+                          onClick={() => {
+                            const defaultRange = [availableYears.min, availableYears.max];
+                            setYearRange(defaultRange);
+                            handleYearRangeApply(defaultRange);
+                            setHasCustomYearRange(false);
+                          }}
+                          mb={1}
+                        >
+                          Toutes
+                        </Button>
+                        <Button
+                          variant={is6070 ? 'solid' : 'outline'}
+                          colorScheme={is6070 ? 'purple' : 'gray'}
+                          onClick={() => {
+                            const range = [1960, 1979];
+                            setYearRange(range);
+                            handleYearRangeApply(range);
+                          }}
+                          mb={1}
+                        >
+                          60-70
+                        </Button>
+                        <Button
+                          variant={is80 ? 'solid' : 'outline'}
+                          colorScheme={is80 ? 'purple' : 'gray'}
+                          onClick={() => {
+                            const range = [1980, 1989];
+                            setYearRange(range);
+                            handleYearRangeApply(range);
+                          }}
+                          mb={1}
+                        >
+                          80
+                        </Button>
+                        <Button
+                          variant={is90 ? 'solid' : 'outline'}
+                          colorScheme={is90 ? 'purple' : 'gray'}
+                          onClick={() => {
+                            const range = [1990, 1999];
+                            setYearRange(range);
+                            handleYearRangeApply(range);
+                          }}
+                          mb={1}
+                        >
+                          90
+                        </Button>
+                        <Button
+                          variant={is2000 ? 'solid' : 'outline'}
+                          colorScheme={is2000 ? 'purple' : 'gray'}
+                          onClick={() => {
+                            const range = [2000, 2009];
+                            setYearRange(range);
+                            handleYearRangeApply(range);
+                          }}
+                          mb={1}
+                        >
+                          2000
+                        </Button>
+                        <Button
+                          variant={is2010 ? 'solid' : 'outline'}
+                          colorScheme={is2010 ? 'purple' : 'gray'}
+                          onClick={() => {
+                            const range = [2010, 2029];
+                            setYearRange(range);
+                            handleYearRangeApply(range);
+                          }}
+                          mb={1}
+                        >
+                          2010+
+                        </Button>
+                      </ButtonGroup>
+                      
+                      <Stack spacing={2}>
+                        <Box>
+                          <Text fontSize="xs" mb={1} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                            Année spécifique
+                          </Text>
+                          <Select
+                            size="sm"
+                            placeholder="Choisir une année"
+                            value={minSelected === maxSelected ? minSelected : ''}
+                            onChange={(e) => {
+                              const year = e.target.value;
+                              if (year) {
+                                const yearNum = Number.parseInt(year, 10);
+                                const range = [yearNum, yearNum];
+                                setYearRange(range);
+                                handleYearRangeApply(range);
+                              } else {
+                                const defaultRange = [availableYears.min, availableYears.max];
+                                setYearRange(defaultRange);
+                                handleYearRangeApply(defaultRange);
+                              }
+                            }}
+                            bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                          >
+                            {allYears.map(year => (
+                              <option key={year} value={year}>{year}</option>
+                            ))}
+                          </Select>
+                        </Box>
+                        
+                        <Flex gap={2}>
+                          <Box flex="1">
+                            <Text fontSize="xs" mb={1} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                              De
+                            </Text>
+                            <Input
+                              size="sm"
+                              type="number"
+                              placeholder="Année début"
+                              value={minSelected}
+                              onChange={(e) => {
+                                const start = Number.parseInt(e.target.value, 10);
+                                if (!isNaN(start)) {
+                                  setYearRange([start, maxSelected]);
+                                }
+                              }}
+                              onBlur={() => handleYearRangeApply([minSelected, maxSelected])}
+                              bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                              min={availableYears.min}
+                              max={availableYears.max}
+                            />
+                          </Box>
+                          
+                          <Box flex="1">
+                            <Text fontSize="xs" mb={1} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                              À
+                            </Text>
+                            <Input
+                              size="sm"
+                              type="number"
+                              placeholder="Année fin"
+                              value={maxSelected}
+                              onChange={(e) => {
+                                const end = Number.parseInt(e.target.value, 10);
+                                if (!isNaN(end)) {
+                                  setYearRange([minSelected, end]);
+                                }
+                              }}
+                              onBlur={() => handleYearRangeApply([minSelected, maxSelected])}
+                              bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                              min={availableYears.min}
+                              max={availableYears.max}
+                            />
+                          </Box>
+                        </Flex>
+                        
+                        {!isAllYears && (
+                          <Text fontSize="xs" color={colorMode === 'dark' ? 'purple.300' : 'purple.600'}>
+                            {minSelected === maxSelected
+                              ? `Albums de ${minSelected}`
+                              : `Albums de ${minSelected} à ${maxSelected}`
+                            }
+                          </Text>
+                        )}
+                      </Stack>
                     </Box>
                   );
                 })()}
@@ -1575,46 +1720,202 @@ function App() {
                       </Button>
                     )}
                   </FormControl>
+                  {/* Filtre par année moderne (mobile) */}
                   {availableYears && (() => {
                     const [minSelected, maxSelected] = yearRange[0] !== null ? yearRange : [availableYears.min, availableYears.max];
+                    const allYears = [];
+                    for (let y = availableYears.min; y <= availableYears.max; y++) {
+                      allYears.push(y);
+                    }
+                    
+                    const isAllYears = minSelected === availableYears.min && maxSelected === availableYears.max;
+                    const is6070 = minSelected === 1960 && maxSelected === 1979;
+                    const is80 = minSelected === 1980 && maxSelected === 1989;
+                    const is90 = minSelected === 1990 && maxSelected === 1999;
+                    const is2000 = minSelected === 2000 && maxSelected === 2009;
+                    const is2010 = minSelected === 2010 && maxSelected === 2029;
+                    
                     return (
                       <Box mb={4}>
-                        <Text fontSize="sm" mb={1} color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
-                          Plage d'années : {minSelected} - {maxSelected}
+                        <Text fontSize="sm" mb={2} fontWeight="semibold" color={colorMode === 'dark' ? 'gray.200' : 'gray.700'}>
+                          Filtrer par année
                         </Text>
-                        <RangeSlider
-                          min={availableYears.min}
-                          max={availableYears.max}
-                          step={1}
-                          value={[minSelected, maxSelected]}
-                          onChange={val => setYearRange(val)}
-                          onChangeEnd={(val) => {
-                            handleYearRangeApply(val);
-                            closeFilters();
-                          }}
-                          colorScheme="brand"
-                        >
-                          <RangeSliderTrack>
-                            <RangeSliderFilledTrack />
-                          </RangeSliderTrack>
-                          <RangeSliderThumb index={0} />
-                          <RangeSliderThumb index={1} />
-                        </RangeSlider>
-                        <Button
-                          mt={1}
-                          size="xs"
-                          variant="ghost"
-                          colorScheme="gray"
-                          onClick={() => {
-                            const defaultRange = [availableYears.min, availableYears.max];
-                            setYearRange(defaultRange);
-                            handleYearRangeApply(defaultRange);
-                            setHasCustomYearRange(false);
-                            closeFilters();
-                          }}
-                        >
-                          Toutes les années
-                        </Button>
+                        
+                        <ButtonGroup size="xs" spacing={1} flexWrap="wrap" mb={3}>
+                          <Button
+                            variant={isAllYears ? 'solid' : 'outline'}
+                            colorScheme={isAllYears ? 'brand' : 'gray'}
+                            onClick={() => {
+                              const defaultRange = [availableYears.min, availableYears.max];
+                              setYearRange(defaultRange);
+                              handleYearRangeApply(defaultRange);
+                              setHasCustomYearRange(false);
+                              closeFilters();
+                            }}
+                            mb={1}
+                          >
+                            Toutes
+                          </Button>
+                          <Button
+                            variant={is6070 ? 'solid' : 'outline'}
+                            colorScheme={is6070 ? 'brand' : 'gray'}
+                            onClick={() => {
+                              const range = [1960, 1979];
+                              setYearRange(range);
+                              handleYearRangeApply(range);
+                              closeFilters();
+                            }}
+                            mb={1}
+                          >
+                            60-70
+                          </Button>
+                          <Button
+                            variant={is80 ? 'solid' : 'outline'}
+                            colorScheme={is80 ? 'brand' : 'gray'}
+                            onClick={() => {
+                              const range = [1980, 1989];
+                              setYearRange(range);
+                              handleYearRangeApply(range);
+                              closeFilters();
+                            }}
+                            mb={1}
+                          >
+                            80
+                          </Button>
+                          <Button
+                            variant={is90 ? 'solid' : 'outline'}
+                            colorScheme={is90 ? 'brand' : 'gray'}
+                            onClick={() => {
+                              const range = [1990, 1999];
+                              setYearRange(range);
+                              handleYearRangeApply(range);
+                              closeFilters();
+                            }}
+                            mb={1}
+                          >
+                            90
+                          </Button>
+                          <Button
+                            variant={is2000 ? 'solid' : 'outline'}
+                            colorScheme={is2000 ? 'brand' : 'gray'}
+                            onClick={() => {
+                              const range = [2000, 2009];
+                              setYearRange(range);
+                              handleYearRangeApply(range);
+                              closeFilters();
+                            }}
+                            mb={1}
+                          >
+                            2000
+                          </Button>
+                          <Button
+                            variant={is2010 ? 'solid' : 'outline'}
+                            colorScheme={is2010 ? 'brand' : 'gray'}
+                            onClick={() => {
+                              const range = [2010, 2029];
+                              setYearRange(range);
+                              handleYearRangeApply(range);
+                              closeFilters();
+                            }}
+                            mb={1}
+                          >
+                            2010+
+                          </Button>
+                        </ButtonGroup>
+                        
+                        <Stack spacing={2}>
+                          <Box>
+                            <Text fontSize="xs" mb={1} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                              Année spécifique
+                            </Text>
+                            <Select
+                              size="sm"
+                              placeholder="Choisir une année"
+                              value={minSelected === maxSelected ? minSelected : ''}
+                              onChange={(e) => {
+                                const year = e.target.value;
+                                if (year) {
+                                  const yearNum = Number.parseInt(year, 10);
+                                  const range = [yearNum, yearNum];
+                                  setYearRange(range);
+                                  handleYearRangeApply(range);
+                                  closeFilters();
+                                } else {
+                                  const defaultRange = [availableYears.min, availableYears.max];
+                                  setYearRange(defaultRange);
+                                  handleYearRangeApply(defaultRange);
+                                  closeFilters();
+                                }
+                              }}
+                              bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                            >
+                              {allYears.map(year => (
+                                <option key={year} value={year}>{year}</option>
+                              ))}
+                            </Select>
+                          </Box>
+                          
+                          <Flex gap={2}>
+                            <Box flex="1">
+                              <Text fontSize="xs" mb={1} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                                De
+                              </Text>
+                              <Input
+                                size="sm"
+                                type="number"
+                                placeholder="Année début"
+                                value={minSelected}
+                                onChange={(e) => {
+                                  const start = Number.parseInt(e.target.value, 10);
+                                  if (!isNaN(start)) {
+                                    setYearRange([start, maxSelected]);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  handleYearRangeApply([minSelected, maxSelected]);
+                                  closeFilters();
+                                }}
+                                bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                                min={availableYears.min}
+                                max={availableYears.max}
+                              />
+                            </Box>
+                            
+                            <Box flex="1">
+                              <Text fontSize="xs" mb={1} color={colorMode === 'dark' ? 'gray.400' : 'gray.600'}>
+                                À
+                              </Text>
+                              <Input
+                                size="sm"
+                                type="number"
+                                placeholder="Année fin"
+                                value={maxSelected}
+                                onChange={(e) => {
+                                  const end = Number.parseInt(e.target.value, 10);
+                                  if (!isNaN(end)) {
+                                    setYearRange([minSelected, end]);
+                                  }
+                                }}
+                                onBlur={() => {
+                                  handleYearRangeApply([minSelected, maxSelected]);
+                                  closeFilters();
+                                }}
+                                bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                                min={availableYears.min}
+                                max={availableYears.max}
+                              />
+                            </Box>
+                          </Flex>
+                          
+                          {!isAllYears && (
+                            <Text fontSize="xs" color={colorMode === 'dark' ? 'purple.300' : 'purple.600'}>
+                              {minSelected === maxSelected
+                                ? `Albums de ${minSelected}`
+                                : `Albums de ${minSelected} à ${maxSelected}`
+                              }
+                            </Text>
+                          )}
+                        </Stack>
                       </Box>
                     );
                   })()}
