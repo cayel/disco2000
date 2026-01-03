@@ -539,6 +539,9 @@ function SortableAlbumTile({ item, colorMode, isUpdating, onRemove }) {
         {item.artist?.name && (
           <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'} noOfLines={1}>{item.artist.name}</Text>
         )}
+        {item.year && (
+          <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.500'} noOfLines={1}>{item.year}</Text>
+        )}
       </Box>
     </Box>
   );
