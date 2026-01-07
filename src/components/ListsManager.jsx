@@ -32,6 +32,8 @@ export default function ListsManager() {
   const [isRemoving, setIsRemoving] = useState(false);
   const removeCancelRef = useRef();
   const [updatingAlbumId, setUpdatingAlbumId] = useState(null);
+  const [showAlbumInfo, setShowAlbumInfo] = useState(false); // Toggle pour afficher/masquer les infos sur les pochettes
+  const [gridColumns, setGridColumns] = useState(7); // Nombre de colonnes pour la grille
   // DnD Kit sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [activeId, setActiveId] = useState(null);
@@ -263,7 +265,7 @@ export default function ListsManager() {
       pb={{ base: 24, md: 12 }}
       bg={colorMode === 'dark' ? 'slate.900' : '#f7f7fa'}
     >
-      <Box maxW="1100px" mx="auto" px={{ base: 3, md: 4 }} pt={6}>
+      <Box maxW="1600px" mx="auto" px={{ base: 3, md: 4 }} pt={6}>
         <Flex align="center" justify="space-between" mb={4} wrap="wrap" gap={3}>
           <Heading size="lg" color={colorMode === 'dark' ? 'gray.100' : 'brand.800'}>
             Mes listes
@@ -324,7 +326,28 @@ export default function ListsManager() {
 
         {/* Liste des listes */}
         {!loading && !error && (
-          lists.length === 0 ? (
+          <Flex gap={4} align="flex-start" direction={{ base: 'column', lg: 'row' }}>
+            {/* Panneau gauche : listes */}
+            <Box w={{ base: '100%', lg: selectedList ? '380px' : '100%' }} flexShrink={0} maxH={{ base: 'none', lg: 'calc(100vh - 200px)' }} overflowY={{ base: 'visible', lg: 'auto' }}>
+              {/* Barre de recherche et tri */}
+              <Flex gap={2} mb={3} wrap="wrap">
+                <Input
+                  size="sm"
+                  placeholder="Rechercher…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  flex="1"
+                  minW="120px"
+                  bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                />
+                <Select size="sm" value={sortKey} onChange={(e) => setSortKey(e.target.value)} maxW="120px" bg={colorMode === 'dark' ? 'slate.800' : 'white'}>
+                  <option value="recent">Récents</option>
+                  <option value="title">Titre</option>
+                  <option value="ranked">Classées</option>
+                </Select>
+              </Flex>
+
+              {lists.length === 0 ? (
             <Box
               borderWidth={1}
               borderColor={colorMode === 'dark' ? 'slate.700' : 'gray.200'}
@@ -339,7 +362,7 @@ export default function ListsManager() {
               <Button mt={3} size="sm" colorScheme="brand" onClick={onOpen}>Créer une liste</Button>
             </Box>
           ) : (
-            <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+            <Stack spacing={2}>
               {lists
                 .filter(l => String(l.title || '').toLowerCase().includes(query.trim().toLowerCase()))
                 .sort((a,b) => {
@@ -351,53 +374,154 @@ export default function ListsManager() {
                   return bd - ad;
                 })
                 .map((l) => (
-                <Box
+                <Flex
                   key={l.id}
                   borderWidth={1}
-                  borderColor={colorMode === 'dark' ? 'slate.700' : 'gray.200'}
-                  bg={colorMode === 'dark' ? 'slate.800' : 'white'}
-                  borderRadius="lg"
-                  p={4}
-                  boxShadow="sm"
+                  borderColor={selectedList?.id === l.id ? (colorMode === 'dark' ? 'brand.500' : 'brand.400') : (colorMode === 'dark' ? 'slate.700' : 'gray.200')}
+                  bg={selectedList?.id === l.id ? (colorMode === 'dark' ? 'brand.900' : 'brand.50') : (colorMode === 'dark' ? 'slate.800' : 'white')}
+                  borderRadius="md"
+                  p={{ base: 2, md: 3 }}
+                  align="center"
+                  justify="space-between"
+                  gap={2}
+                  cursor="pointer"
+                  _hover={{ bg: colorMode === 'dark' ? 'whiteAlpha.50' : 'gray.50' }}
+                  transition="all 0.2s"
+                  onClick={() => { 
+                    setSelectedList({ id: l.id, title: l.title, is_ranked: !!l.is_ranked }); 
+                    fetchSelectedAlbums(l.id); 
+                  }}
                 >
-                  <Stack spacing={2}>
-                    <Flex align="center" justify="space-between" gap={2}>
-                      <Heading as="h3" size="sm" noOfLines={2} color={colorMode === 'dark' ? 'gray.100' : 'brand.800'}>
+                  <Flex align="center" gap={2} flex="1" minW={0}>
+                    <Badge colorScheme={l.is_ranked ? 'purple' : 'gray'} fontSize="xs">
+                      {l.is_ranked ? 'Classée' : 'Liste'}
+                    </Badge>
+                    <Box flex="1" minW={0}>
+                      <Text fontWeight={selectedList?.id === l.id ? "bold" : "semibold"} fontSize="sm" noOfLines={1} color={colorMode === 'dark' ? 'gray.100' : 'brand.800'}>
                         {l.title}
-                      </Heading>
-                      <Flex align="center" gap={2}>
-                        <Badge colorScheme={l.is_ranked ? 'purple' : 'gray'} variant="subtle">
-                          {l.is_ranked ? 'Classée' : 'Non classée'}
-                        </Badge>
-                        <IconButton
-                          aria-label="Supprimer la liste"
-                          icon={<DeleteIcon />}
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="red"
-                          onClick={() => handleAskDelete(l)}
-                        />
-                      </Flex>
-                    </Flex>
-                    <Text fontSize="sm" color={colorMode === 'dark' ? 'gray.300' : 'gray.700'} noOfLines={3}>
-                      {l.description || 'Aucune description'}
-                    </Text>
-                    {/* Date de création */}
-                    {l.created_at && (
-                      <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.500'}>
-                        Créée le {new Date(l.created_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: '2-digit' })}
                       </Text>
-                    )}
-                    <Flex justify="flex-end">
-                      <Button size="sm" variant="outline" colorScheme="brand" onClick={() => { setSelectedList({ id: l.id, title: l.title, is_ranked: !!l.is_ranked }); fetchSelectedAlbums(l.id); }}>
-                        Voir
-                      </Button>
-                    </Flex>
-                  </Stack>
-                </Box>
+                      {l.description && (
+                        <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} noOfLines={1}>
+                          {l.description}
+                        </Text>
+                      )}
+                    </Box>
+                  </Flex>
+                  <IconButton
+                    aria-label="Supprimer la liste"
+                    icon={<DeleteIcon />}
+                    size="xs"
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAskDelete(l);
+                    }}
+                  />
+                </Flex>
               ))}
-            </SimpleGrid>
-          )
+            </Stack>
+          )}
+          </Box>
+
+          {/* Panneau droite : albums de la liste sélectionnée */}
+          {selectedList && (
+            <Box flex="1" minW={0}>
+              <Flex align="center" justify="space-between" mb={4} wrap="wrap" gap={2}>
+                <Heading as="h2" size={{ base: 'sm', md: 'md' }} color={colorMode === 'dark' ? 'gray.100' : 'brand.800'}>
+                  {selectedList.title}
+                </Heading>
+                <Flex gap={2} align="center" wrap="wrap">
+                  <Flex align="center" gap={1}>
+                    <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.600'} whiteSpace="nowrap" display={{ base: 'none', sm: 'block' }}>
+                      Par ligne :
+                    </Text>
+                    <Select 
+                      size="sm" 
+                      value={gridColumns} 
+                      onChange={(e) => setGridColumns(Number(e.target.value))} 
+                      w={{ base: '70px', sm: '80px' }}
+                      bg={colorMode === 'dark' ? 'slate.800' : 'white'}
+                    >
+                      <option value={3}>3</option>
+                      <option value={4}>4</option>
+                      <option value={5}>5</option>
+                      <option value={6}>6</option>
+                      <option value={7}>7</option>
+                      <option value={8}>8</option>
+                      <option value={9}>9</option>
+                      <option value={10}>10</option>
+                    </Select>
+                  </Flex>
+                  <Button 
+                    size="sm" 
+                    variant={showAlbumInfo ? "solid" : "outline"}
+                    colorScheme="purple"
+                    onClick={() => setShowAlbumInfo(!showAlbumInfo)}
+                  >
+                    <Text display={{ base: 'none', sm: 'block' }}>{showAlbumInfo ? 'Masquer infos' : 'Afficher infos'}</Text>
+                    <Text display={{ base: 'block', sm: 'none' }}>{showAlbumInfo ? 'Infos' : 'Infos'}</Text>
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={() => {
+                      setSelectedList(null);
+                      setSelectedAlbums([]);
+                    }}
+                    display={{ base: 'none', lg: 'flex' }}
+                  >
+                    Fermer
+                  </Button>
+                </Flex>
+              </Flex>
+              
+              {selectedLoading && (
+                <Flex align="center" justify="center" py={12}>
+                  <Spinner size="lg" />
+                </Flex>
+              )}
+              {selectedError && (
+                <Box
+                  borderWidth={1}
+                  borderColor={colorMode === 'dark' ? 'red.700' : 'red.200'}
+                  bg={colorMode === 'dark' ? 'red.900' : 'red.50'}
+                  color={colorMode === 'dark' ? 'red.100' : 'red.700'}
+                  borderRadius="md"
+                  px={4}
+                  py={3}
+                  mb={4}
+                >
+                  {selectedError}
+                </Box>
+              )}
+              {!selectedLoading && !selectedError && (
+                selectedAlbums.length === 0 ? (
+                  <Text color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>Aucun album dans cette liste.</Text>
+                ) : (
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                    <SortableContext items={selectedAlbums.map(a => a.album_id)} strategy={rectSortingStrategy}>
+                      <SimpleGrid columns={{ base: Math.min(3, gridColumns), sm: Math.min(4, gridColumns), md: Math.min(5, gridColumns), lg: gridColumns }} spacing={{ base: 2, md: 3 }}>
+                        {selectedAlbums.map((item) => (
+                          <SortableAlbumTile key={item.album_id} item={item} colorMode={colorMode} isUpdating={updatingAlbumId === item.album_id} showInfo={showAlbumInfo} onRemove={() => { setPendingRemove({ album_id: item.album_id, title: item.title }); openRemove(); }} />
+                        ))}
+                      </SimpleGrid>
+                    </SortableContext>
+                    <DragOverlay dropAnimation={null}>
+                      {activeId ? (
+                        <Box borderRadius="md" boxShadow="lg" overflow="hidden">
+                          <AspectRatio ratio={1}>
+                            <Image src={selectedAlbums.find(a => a.album_id === activeId)?.cover_url || ''} alt={selectedAlbums.find(a => a.album_id === activeId)?.title || ''} objectFit="cover" />
+                          </AspectRatio>
+                        </Box>
+                      ) : null}
+                    </DragOverlay>
+                  </DndContext>
+                )
+              )}
+            </Box>
+          )}
+        </Flex>
         )}
       </Box>
 
@@ -426,62 +550,6 @@ export default function ListsManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Affichage inline de la mosaïque des albums de la liste sélectionnée */}
-      {selectedList && (
-        <Box maxW="1100px" mx="auto" px={{ base: 3, md: 4 }} pt={6}>
-          <Flex align="center" justify="space-between" mb={3} wrap="wrap" gap={2}>
-            <Heading as="h2" size="md" color={colorMode === 'dark' ? 'gray.100' : 'brand.800'}>
-              Albums de la liste : {selectedList.title}
-            </Heading>
-            <Flex gap={2}></Flex>
-          </Flex>
-          {selectedLoading && (
-            <Flex align="center" justify="center" py={8}>
-              <Spinner size="lg" />
-            </Flex>
-          )}
-          {selectedError && (
-            <Box
-              borderWidth={1}
-              borderColor={colorMode === 'dark' ? 'red.700' : 'red.200'}
-              bg={colorMode === 'dark' ? 'red.900' : 'red.50'}
-              color={colorMode === 'dark' ? 'red.100' : 'red.700'}
-              borderRadius="md"
-              px={4}
-              py={3}
-              mb={4}
-            >
-              {selectedError}
-            </Box>
-          )}
-          {!selectedLoading && !selectedError && (
-            selectedAlbums.length === 0 ? (
-              <Text color={colorMode === 'dark' ? 'gray.300' : 'gray.600'}>Aucun album dans cette liste.</Text>
-            ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                <SortableContext items={selectedAlbums.map(a => a.album_id)} strategy={rectSortingStrategy}>
-                  <SimpleGrid columns={{ base: 3, sm: 4, md: 6 }} spacing={3}>
-                    {selectedAlbums.map((item) => (
-                      <SortableAlbumTile key={item.album_id} item={item} colorMode={colorMode} isUpdating={updatingAlbumId === item.album_id} onRemove={() => { setPendingRemove({ album_id: item.album_id, title: item.title }); openRemove(); }} />
-                    ))}
-                  </SimpleGrid>
-                </SortableContext>
-                <DragOverlay dropAnimation={null}>
-                  {activeId ? (
-                    <Box borderRadius="md" boxShadow="lg" overflow="hidden">
-                      <AspectRatio ratio={1}>
-                        <Image src={selectedAlbums.find(a => a.album_id === activeId)?.cover_url || ''} alt={selectedAlbums.find(a => a.album_id === activeId)?.title || ''} objectFit="cover" />
-                      </AspectRatio>
-                    </Box>
-                  ) : null}
-                </DragOverlay>
-              </DndContext>
-              
-            )
-          )}
-        </Box>
-      )}
 
       {/* Confirmation suppression d'un album de la liste */}
       <AlertDialog
@@ -512,7 +580,7 @@ export default function ListsManager() {
   );
 }
 
-function SortableAlbumTile({ item, colorMode, isUpdating, onRemove }) {
+function SortableAlbumTile({ item, colorMode, isUpdating, showInfo, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.album_id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -534,15 +602,17 @@ function SortableAlbumTile({ item, colorMode, isUpdating, onRemove }) {
         <Badge position="absolute" top={2} left={2} colorScheme="brand" borderRadius="md">#{item.position}</Badge>
       )}
       <IconButton aria-label="Retirer l'album de la liste" icon={<DeleteIcon />} size="xs" variant="ghost" colorScheme="red" position="absolute" top={2} right={2} onClick={onRemove} isLoading={isUpdating} />
-      <Box position="absolute" bottom={0} left={0} right={0} bg={colorMode === 'dark' ? 'rgba(15,16,30,0.65)' : 'rgba(255,255,255,0.85)'} px={2} py={1}>
-        <Text fontSize="xs" fontWeight="semibold" noOfLines={1}>{item.title}</Text>
-        {item.artist?.name && (
-          <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'} noOfLines={1}>{item.artist.name}</Text>
-        )}
-        {item.year && (
-          <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.500'} noOfLines={1}>{item.year}</Text>
-        )}
-      </Box>
+      {showInfo && (
+        <Box position="absolute" bottom={0} left={0} right={0} bg={colorMode === 'dark' ? 'rgba(15,16,30,0.85)' : 'rgba(255,255,255,0.90)'} px={2} py={1}>
+          <Text fontSize="xs" fontWeight="semibold" noOfLines={1}>{item.title}</Text>
+          {item.artist?.name && (
+            <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.300' : 'gray.600'} noOfLines={1}>{item.artist.name}</Text>
+          )}
+          {item.year && (
+            <Text fontSize="xs" color={colorMode === 'dark' ? 'gray.400' : 'gray.500'} noOfLines={1}>{item.year}</Text>
+          )}
+        </Box>
+      )}
     </Box>
   );
 }
